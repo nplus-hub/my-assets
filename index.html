@@ -2,48 +2,37 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Asset Manager Pro</title>
-    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
+    <title>Safe Asset Manager</title>
     <style>
-        :root { --bg: #f5f7fa; --primary: #007bff; --dark: #24292f; }
-        body { font-family: sans-serif; background: var(--bg); padding: 20px; }
-        .panel { background: #fff; padding: 20px; border-radius: 8px; border: 1px dashed #ccc; margin-bottom: 20px; max-width: 800px; margin-inline: auto; }
-        .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
-        .card { background: #fff; padding: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; }
-        .preview { height: 120px; background: #eee; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; }
-        .preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
-        .btn { padding: 8px 15px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; }
-        .btn-primary { background: var(--primary); color: white; }
-        #status { font-size: 12px; margin-left: 10px; }
+        body { font-family: sans-serif; background: #f4f7f6; padding: 20px; }
+        .upload-card { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 500px; margin: 0 auto 30px; text-align: center; }
+        .btn { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; }
+        .btn:disabled { background: #ccc; }
+        #status { margin-top: 10px; font-size: 14px; color: #555; display: block; }
     </style>
 </head>
 <body>
 
-<div class="panel">
-    <h3>Google Driveへアップロード</h3>
-    <input type="file" id="driveFile">
-    <button onclick="uploadToDrive()" id="uploadBtn" class="btn btn-primary">ドライブへ保存</button>
-    <span id="status"></span>
+<div class="upload-card">
+    <h3 style="margin-top:0;">Drive Upload</h3>
+    <input type="file" id="fileInput">
+    <button id="uploadBtn" class="btn" onclick="runUpload()">ドライブに保存</button>
+    <span id="status">ファイルを選択してください</span>
 </div>
 
-<div class="container" id="gallery">
-    </div>
-
 <script>
-    // ★【重要】GASでデプロイした「ウェブアプリのURL」をここに貼り付け
-    const GAS_URL = "あなたのGASウェブアプリURL";
+    const WEB_APP_URL = "あなたのGASウェブアプリURL";
 
-    // --- アップロード機能 ---
-    async function uploadToDrive() {
-        const fileInput = document.getElementById('driveFile');
-        const status = document.getElementById('status');
+    async function runUpload() {
+        const input = document.getElementById('fileInput');
         const btn = document.getElementById('uploadBtn');
+        const status = document.getElementById('status');
         
-        if (!fileInput.files.length) return alert("ファイルを選択してください");
+        if (!input.files.length) return;
         
-        const file = fileInput.files[0];
-        status.innerText = "アップロード中...";
+        const file = input.files[0];
         btn.disabled = true;
+        status.innerText = "⏳ 処理中...";
 
         const reader = new FileReader();
         reader.onload = async (e) => {
@@ -51,51 +40,23 @@
             const payload = { base64: base64, type: file.type, name: file.name };
 
             try {
-                const res = await fetch(GAS_URL, {
+                // セキュリティ上、mode: 'no-cors' を使用します
+                await fetch(WEB_APP_URL, {
                     method: 'POST',
-                    mode: 'no-cors', // セキュリティ上の理由でレスポンスは直接読めない場合があります
+                    mode: 'no-cors',
                     body: JSON.stringify(payload)
                 });
-                // no-corsモードの場合はレスポンスの中身は読めませんが、送信は成功します
                 status.innerText = "✅ 送信完了（ドライブを確認してください）";
-                fileInput.value = "";
+                input.value = "";
             } catch (err) {
-                status.innerText = "❌ エラーが発生しました";
+                status.innerText = "❌ 送信に失敗しました";
             } finally {
                 btn.disabled = false;
             }
         };
         reader.readAsDataURL(file);
     }
-
-    // --- 自動表示機能 (GitHub上のファイルを表示) ---
-    async function loadGitHubFiles() {
-        const USER = "nplus-hub";
-        const REPO = "my-assets";
-        const apiURL = `https://api.github.com/repos/${USER}/${REPO}/contents/`;
-        const rawURL = `https://${USER}.github.io/${REPO}/`;
-        
-        try {
-            const res = await fetch(apiURL);
-            const files = await res.json();
-            const gallery = document.getElementById('gallery');
-
-            files.forEach(file => {
-                if (file.name === "index.html" || file.name.startsWith('.')) return;
-                
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = `
-                    <div class="preview"><img src="${rawURL + file.name}"></div>
-                    <div style="font-size:12px; margin-bottom:5px;">${file.name}</div>
-                    <a href="${rawURL + file.name}" download class="btn btn-primary" style="text-decoration:none; font-size:11px;">DL</a>
-                `;
-                gallery.appendChild(card);
-            });
-        } catch (e) { console.error("GitHubの読み込み失敗"); }
-    }
-
-    loadGitHubFiles();
 </script>
+
 </body>
 </html>

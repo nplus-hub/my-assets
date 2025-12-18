@@ -8,19 +8,18 @@
         body { font-family: sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
         .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; max-width: 1400px; margin: 0 auto; }
         .card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; position: relative; border: 1px solid #e1e4e8; height: 320px; }
-        .preview { width: 100%; height: 200px; background: #eaedef; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .preview { width: 100%; height: 200px; background: #eaedef; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
         .preview img, model-viewer, video, iframe { width: 100%; height: 100%; border: none; object-fit: contain; }
         
-        /* テキストプレビュー用スタイル */
-        .text-preview { font-size: 10px; padding: 10px; background: #2d2d2d; color: #adff2f; width: 100%; height: 100%; white-space: pre-wrap; margin: 0; overflow: hidden; box-sizing: border-box; text-align: left; }
+        .text-preview { font-size: 10px; padding: 10px; background: #f8f9fa; color: #333; width: 100%; height: 100%; white-space: pre-wrap; margin: 0; overflow: hidden; box-sizing: border-box; text-align: left; border: none; }
         
-        .icon-container { text-align: center; }
+        .icon-container { text-align: center; pointer-events: none; }
         .icon-emoji { font-size: 60px; display: block; margin-bottom: 5px; }
         .ext-badge { font-size: 12px; font-weight: bold; color: #666; background: #ddd; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; }
         
         .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
         .file-name { font-size: 13px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #333; }
-        .badge { position: absolute; top: 10px; right: 10px; padding: 4px 8px; border-radius: 6px; color: white; font-size: 10px; font-weight: bold; z-index: 5; }
+        .badge { position: absolute; top: 10px; right: 10px; padding: 4px 8px; border-radius: 6px; color: white; font-size: 10px; font-weight: bold; z-index: 10; }
         .btn { width: 100%; padding: 8px; cursor: pointer; border: 1px solid #d1d5da; background: #fafbfc; border-radius: 6px; font-size: 11px; }
     </style>
 </head>
@@ -32,10 +31,9 @@
     const GITHUB_REPO = "my-assets";
     const GAS_URL = "https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLg6lUNYUqDKS-la6alsT4YpBKyevS2tE06eNJoXZRnOQkelBknB60UdBeYtGEtPVj4l2kFQHZX98ee9zQVchhKya8t7YPSNylReH92jZnAjEuZbEkLPSIwSXAKNwUesELe8t4bLyO_AsBIMOuJKj1aNUcZuUkgLPX-Xo-57SF8GOWzBvHefnwpGPOmwsCCEvOn04e6st9icxR4-BRrLahxvFmkV6yQDBQrgjZYnEzJGYhDKdFSzrFEu0XIaLRha516n5_K_uflsRsp2Qk9p50jMsOsJ6sUeplTzYQzf&lib=MurWCq0JNvz56-vjWDQz3gypAWhvqL-Aw"; 
 
-    // 拡張子に応じた絵文字の定義
     function getEmoji(ext) {
         const map = {
-            'pdf': '📄', 'txt': '📝', 'md': '📝',
+            'pdf': '📄', 'txt': '📝', 'md': '📝', 'docx': '📝',
             'glb': '📦', 'gltf': '📦', 'zip': '📚',
             'mp3': '🎵', 'wav': '🎵', 'js': '📜', 'html': '🌐'
         };
@@ -61,32 +59,10 @@
         badge.textContent = source;
         previewArea.appendChild(badge);
 
-        // --- プレビュー表示の改善 ---
-        if (['txt', 'js', 'json', 'html', 'css', 'md'].includes(ext)) {
-            // テキストファイルの読み込み
-            const pre = document.createElement('pre');
-            pre.className = 'text-preview';
-            pre.textContent = '読み込み中...';
-            // Driveの場合はGAS経由か、公開設定なら直接取得を試みる
-            const fetchUrl = isDrive ? `https://drive.google.com/uc?export=download&id=${fileId}` : url;
-            fetch(fetchUrl).then(r => r.text()).then(t => {
-                pre.textContent = t.substring(0, 500);
-            }).catch(() => {
-                previewArea.innerHTML = '';
-                previewArea.appendChild(badge);
-                previewArea.insertAdjacentHTML('beforeend', createIconHtml(ext));
-            });
-            previewArea.appendChild(pre);
-        } 
-        else if (ext === 'pdf' || (isDrive && ['mp4', 'webm', 'mov'].includes(ext))) {
-            // PDFやDriveの動画は埋め込みプレビューを使用
-            const iframe = document.createElement('iframe');
-            iframe.src = isDrive ? `https://drive.google.com/file/d/${fileId}/preview` : url;
-            previewArea.appendChild(iframe);
-        }
-        else if (['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext)) {
-            // 画像プレビュー
+        // --- プレビューロジックの修正 ---
+        if (['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext)) {
             const img = document.createElement('img');
+            // Drive画像は読み込み失敗が多いため、エラー時にアイコンへ切り替え
             img.src = isDrive ? `https://drive.google.com/uc?export=view&id=${fileId}` : url;
             img.onerror = () => {
                 previewArea.innerHTML = '';
@@ -95,8 +71,26 @@
             };
             previewArea.appendChild(img);
         } 
+        else if (['txt', 'md', 'js'].includes(ext)) {
+            const pre = document.createElement('pre');
+            pre.className = 'text-preview';
+            const fetchUrl = isDrive ? `https://drive.google.com/uc?export=download&id=${fileId}` : url;
+            fetch(fetchUrl)
+                .then(r => r.ok ? r.text() : Promise.reject())
+                .then(t => { pre.textContent = t.substring(0, 500); })
+                .catch(() => {
+                    previewArea.innerHTML = '';
+                    previewArea.appendChild(badge);
+                    previewArea.insertAdjacentHTML('beforeend', createIconHtml(ext));
+                });
+            previewArea.appendChild(pre);
+        }
+        else if (ext === 'pdf' || (isDrive && ['mp4', 'webm', 'mov'].includes(ext))) {
+            const iframe = document.createElement('iframe');
+            iframe.src = isDrive ? `https://drive.google.com/file/d/${fileId}/preview` : url;
+            previewArea.appendChild(iframe);
+        }
         else if (!isDrive && ['glb', 'gltf'].includes(ext)) {
-            // 3Dプレビュー（GitHubのみ）
             const mv = document.createElement('model-viewer');
             mv.setAttribute('src', url);
             mv.setAttribute('auto-rotate', '');
@@ -104,45 +98,12 @@
             previewArea.appendChild(mv);
         }
         else {
-            // その他はアイコン（絵文字）を表示
             previewArea.insertAdjacentHTML('beforeend', createIconHtml(ext));
         }
 
         const cardBody = document.createElement('div');
         cardBody.className = 'card-body';
-        const fileName = document.createElement('div');
-        fileName.className = 'file-name';
-        fileName.textContent = name;
+        cardBody.innerHTML = `<div class="file-name">${name}</div>`;
         
         const btn = document.createElement('button');
-        btn.className = 'btn';
-        btn.textContent = 'URLをコピー';
-        const copyUrl = isDrive ? `https://drive.google.com/uc?export=view&id=${fileId}` : url;
-        btn.onclick = () => { navigator.clipboard.writeText(copyUrl); };
-
-        cardBody.appendChild(fileName);
-        cardBody.appendChild(btn);
-        card.appendChild(previewArea);
-        card.appendChild(cardBody);
-        gallery.appendChild(card);
-    }
-
-    async function init() {
-        // GitHubからの取得
-        fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/`)
-            .then(res => res.json()).then(data => {
-                if(Array.isArray(data)) data.forEach(f => {
-                    if(f.type === 'file' && f.name !== 'index.html') createCard(f.name, f.download_url, 'GitHub', '#24292f');
-                });
-            });
-        // Google Driveからの取得
-        fetch(GAS_URL).then(res => res.json()).then(driveData => {
-            if(Array.isArray(driveData)) driveData.forEach(f => {
-                if(!f.error) createCard(f.name, '', 'Drive', '#34a853', true, f.id);
-            });
-        });
-    }
-    init();
-</script>
-</body>
-</html>
+        btn.className = 'btn

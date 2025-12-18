@@ -4,39 +4,111 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Asset Manager</title>
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
     <style>
-        :root { --bg: #f4f7f6; --dark: #24292f; --primary: #007bff; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; text-align: center; }
-        .header { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto 30px; }
+        :root { --bg: #f5f7fa; --card: #ffffff; --primary: #007bff; --dark: #24292f; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
         
-        /* エラーを回避する最強のボタン：リポジトリTOPへ飛ばす */
+        /* ヘッダー */
+        .header { max-width: 1200px; margin: 0 auto 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #dee2e6; padding-bottom: 15px; }
+        
+        /* 管理用ボタン：nplus-hub用に修正 */
         .admin-btn { 
-            display: inline-block; background: var(--dark); color: white; 
-            text-decoration: none; padding: 15px 30px; border-radius: 8px; 
-            font-weight: bold; font-size: 16px; margin-top: 15px;
+            background: var(--dark); color: white; text-decoration: none; padding: 10px 20px; 
+            border-radius: 6px; font-weight: bold; font-size: 14px; transition: 0.2s;
         }
-        .admin-btn:hover { background: #000; }
+        .admin-btn:hover { background: #000; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+
+        /* カード形式のレイアウト */
+        .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
+        .card { background: var(--card); border-radius: 10px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #e1e4e8; display: flex; flex-direction: column; }
         
-        .instruction { text-align: left; font-size: 14px; color: #555; background: #fffbe6; padding: 15px; border-radius: 8px; border: 1px solid #ffe58f; margin-top: 20px; }
+        /* プレビューエリア */
+        .preview { width: 100%; height: 180px; background: #eaeff2; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
+        .preview img, .preview video, .preview model-viewer { width: 100%; height: 100%; object-fit: contain; }
+        
+        .card-body { padding: 16px; flex-grow: 1; }
+        .file-name { font-weight: bold; font-size: 15px; margin-bottom: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        /* ボタン類 */
+        .actions { display: flex; gap: 8px; }
+        .btn { flex: 1; padding: 10px; font-size: 13px; border-radius: 6px; cursor: pointer; text-align: center; text-decoration: none; font-weight: bold; border: 1px solid #d1d5da; background: #fafbfc; color: #24292f; }
+        .btn-primary { background: var(--primary); color: white; border: none; }
+        .btn-primary:hover { background: #0069d9; }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <h1>Asset Library</h1>
-    <p>素材の追加や管理は下のボタンから行えます</p>
-    
-    <a href="https://github.com/nplus-assets/my-assets" target="_blank" class="admin-btn">
-        GitHub管理画面を開く
+    <h1 style="margin:0; font-size: 24px;">Asset Library</h1>
+    <a href="https://github.com/nplus-hub/my-assets/tree/main/assets" target="_blank" class="admin-btn">
+        素材をアップロード
     </a>
-
-    <div class="instruction">
-        <strong>⚠️ アップロードの手順（エラーを出さないために）:</strong><br>
-        1. 上のボタンでGitHubを開く<br>
-        2. 一覧にある <strong>assets</strong> フォルダをクリック<br>
-        3. 右上の <strong>Add file</strong> ＞ <strong>Upload files</strong> を選ぶ
-    </div>
 </div>
+
+<div class="container" id="asset-gallery">
+    </div>
+
+<script>
+    /**
+     * 【素材の整理・表示設定】
+     * file: assetsフォルダ内の実際のファイル名
+     * type: 'image', 'video', 'audio', '3d'
+     */
+    const myAssets = [
+        { name: "サンプル画像", file: "sample.png", type: "image" },
+        { name: "デモ動画", file: "demo.mp4", type: "video" },
+        { name: "3Dモデル素材", file: "model.glb", type: "3d" }
+    ];
+
+    // ファイルのベースURLを自動生成（nplus-hub/my-assetsに対応）
+    const assetBase = window.location.origin + window.location.pathname.replace(/\/$/, "") + "/assets/";
+
+    const gallery = document.getElementById('asset-gallery');
+
+    myAssets.forEach(item => {
+        const fileURL = assetBase + item.file;
+        const card = document.createElement('div');
+        card.className = 'card';
+        
+        let previewContent = '';
+        if(item.type === 'image') {
+            previewContent = `<img src="${fileURL}" onerror="this.src='https://placehold.jp/24/cccccc/ffffff/200x200.png?text=No%20Image'">`;
+        } else if(item.type === 'video') {
+            previewContent = `<video src="${fileURL}" controls></video>`;
+        } else if(item.type === 'audio') {
+            previewContent = `🎵<audio src="${fileURL}" controls style="position:absolute; bottom:5px; width:90%; height:30px;"></audio>`;
+        } else if(item.type === '3d') {
+            previewContent = `<model-viewer src="${fileURL}" auto-rotate camera-controls shadow-intensity="1"></model-viewer>`;
+        }
+
+        card.innerHTML = `
+            <div class="preview">${previewContent}</div>
+            <div class="card-body">
+                <div class="file-name" title="${item.name}">${item.name}</div>
+                <div class="actions">
+                    <a href="${fileURL}" download class="btn btn-primary">DL</a>
+                    <button class="btn" onclick="copyLink('${fileURL}', this)">URLコピー</button>
+                </div>
+            </div>`;
+        gallery.appendChild(card);
+    });
+
+    // 直リンクをコピーする機能
+    function copyLink(url, btn) {
+        navigator.clipboard.writeText(url).then(() => {
+            const originalText = btn.innerText;
+            btn.innerText = "コピー完了";
+            btn.style.backgroundColor = "#e6ffec";
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.style.backgroundColor = "";
+            }, 1500);
+        }).catch(() => {
+            alert("コピーに失敗しました。");
+        });
+    }
+</script>
 
 </body>
 </html>

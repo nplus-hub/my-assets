@@ -3,74 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <title>Asset Manager</title>
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
     <style>
-        body { font-family: sans-serif; background: #f4f7f6; padding: 20px; }
-        .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; max-width: 1000px; margin: 0 auto; }
-        .card { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border: 1px solid #eee; position: relative; }
-        .badge { position: absolute; top: 5px; right: 5px; padding: 2px 6px; border-radius: 4px; font-size: 10px; color: white; z-index: 5; }
-        .preview { width: 100%; height: 140px; background: #f0f0f0; display: flex; align-items: center; justify-content: center; }
-        .preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
-        .card-body { padding: 10px; }
-        .file-name { font-size: 12px; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .btn { width: 100%; margin-top: 8px; padding: 5px; font-size: 10px; cursor: pointer; }
+        body { font-family: sans-serif; background: #f4f7f6; padding: 20px; margin: 0; }
+        .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
+        .card { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; flex-direction: column; border: 1px solid #eee; }
+        .preview { width: 100%; height: 180px; background: #eee; display: flex; align-items: center; justify-content: center; position: relative; }
+        .preview img, model-viewer { width: 100%; height: 100%; object-fit: contain; border: none; }
+        .text-preview { font-size: 10px; padding: 10px; overflow: hidden; background: #2d2d2d; color: #adff2f; width: 100%; height: 100%; white-space: pre-wrap; margin: 0; }
+        .card-body { padding: 15px; }
+        .file-name { font-size: 13px; font-weight: bold; margin-bottom: 8px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; color: #333; }
+        .badge { position: absolute; top: 10px; right: 10px; padding: 3px 8px; border-radius: 4px; color: white; font-size: 10px; font-weight: bold; z-index: 5; }
+        .btn { width: 100%; padding: 8px; cursor: pointer; border: 1px solid #ddd; background: #fff; border-radius: 5px; font-size: 11px; }
     </style>
 </head>
 <body>
 
-<div class="container" id="gallery">読み込み中...</div>
+<div class="container" id="gallery"></div>
 
 <script>
     const GITHUB_USER = "nplus-hub";
     const GITHUB_REPO = "my-assets";
-    // ★最新のGAS URLをここに貼り付け
     const GAS_URL = "https://script.google.com/macros/s/AKfycbzDkXxfI5GB-WlOE4PYAazoxl6P_AEIIddZrkftIGmDZrYoTOy8_-bLe_pubN6db_PcRg/exec"; 
 
     function createCard(name, url, source, color) {
+        const gallery = document.getElementById('gallery');
         const card = document.createElement('div');
         card.className = 'card';
+        const ext = name.split('.').pop().toLowerCase();
+        
+        let mediaHtml = '';
+        if (['glb', 'gltf'].includes(ext)) {
+            mediaHtml = `<model-viewer src="${url}" auto-rotate camera-controls shadow-intensity="1"></model-viewer>`;
+        } else if (['txt', 'js', 'json', 'html', 'css', 'md'].includes(ext)) {
+            mediaHtml = `<pre class="text-preview" id="txt-${name}">Loading...</pre>`;
+            fetch(url).then(r => r.text()).then(t => {
+                const el = document.getElementById(`txt-${name}`);
+                if (el) el.innerText = t.substring(0, 500);
+            });
+        } else {
+            mediaHtml = `<img src="${url}" onerror="this.src='https://placehold.jp/24/cccccc/ffffff/200x150.png?text=No%20Image'">`;
+        }
+
         card.innerHTML = `
-            <div class="badge" style="background:${color}">${source}</div>
-            <div class="preview"><img src="${url}" onerror="this.src='https://placehold.jp/24/cccccc/ffffff/200x150.png?text=No%20Image'"></div>
+            <div class="preview">
+                <div class="badge" style="background:${color}">${source}</div>
+                ${mediaHtml}
+            </div>
             <div class="card-body">
                 <div class="file-name">${name}</div>
                 <button class="btn" onclick="navigator.clipboard.writeText('${url}')">URLをコピー</button>
             </div>`;
-        document.getElementById('gallery').appendChild(card);
+        gallery.appendChild(card);
     }
 
     async function init() {
         const gallery = document.getElementById('gallery');
         
-        // 1. GitHub読み込み
+        // GitHub処理
         try {
             const res = await fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/`);
-            const data = await res.json();
-            if(Array.isArray(data)) {
-                data.forEach(f => {
-                    // index.html以外で、拡張子があるものだけ表示
-                    if(f.name.includes('.') && f.name !== 'index.html') {
-                        // raw.githubusercontentURL を使うことで確実に表示
-                        const rawUrl = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${f.name}`;
-                        createCard(f.name, rawUrl, 'GitHub', '#24292f');
+            const files = await res.json();
+            if(Array.isArray(files)) {
+                files.forEach(f => {
+                    if(f.type === 'file' && f.name !== 'index.html') {
+                        // GitHub PagesのURLまたはdownload_urlを使用
+                        const url = f.download_url;
+                        createCard(f.name, url, 'GitHub', '#24292f');
                     }
                 });
             }
-        } catch(e) {}
+        } catch(e) { console.error("GitHub Error:", e); }
 
-        // 2. Google Drive読み込み
+        // Drive処理 (GAS経由)
         try {
             const res = await fetch(GAS_URL);
             const driveData = await res.json();
-            driveData.forEach(f => {
-                if(!f.error) {
-                    const url = f.thumbnail || `https://drive.google.com/uc?export=view&id=${f.id}`;
-                    createCard(f.name, url, 'Drive', '#34a853');
-                }
-            });
-        } catch(e) {}
-        
-        if (gallery.innerText.includes('読み込み中')) gallery.innerText = '';
+            if(Array.isArray(driveData)) {
+                driveData.forEach(f => {
+                    if(!f.error) {
+                        const url = f.thumbnail || `https://drive.google.com/uc?export=view&id=${f.id}`;
+                        createCard(f.name, url, 'Drive', '#34a853');
+                    }
+                });
+            }
+        } catch(e) { console.error("Drive Error:", e); }
     }
+
     init();
 </script>
 </body>

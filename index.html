@@ -3,120 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <title>Asset Manager Pro</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>😎</text></svg>">
+    
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
+    
     <style>
-        :root { --primary: #24292f; --bg: #f6f8fa; --border: #d0d7de; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 0; }
+        /* デザイン・構造の維持 */
+        :root { --primary: #24292f; --bg: #f6f8fa; --border: #d0d7de; --danger: #cf222e; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); margin: 0; padding: 0; }
         
-        /* あの頃の黒ヘッダー */
-        header { background: var(--primary); color: white; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; }
+        header { background: var(--primary); color: white; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         
         .container { max-width: 1400px; margin: 0 auto; padding: 32px; display: none; }
         
-        /* 安定の資産グリッド */
         .asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; }
         .asset-card { background: white; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; transition: 0.2s; }
         .asset-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
-        .preview-box { width: 100%; height: 240px; background: #eee; border-bottom: 1px solid var(--border); }
+        
+        .preview-box { width: 100%; height: 240px; background: #eee; border-bottom: 1px solid var(--border); position: relative; }
         model-viewer { width: 100%; height: 100%; }
         
         .asset-info { padding: 16px; }
-        .asset-name { font-weight: 600; font-size: 14px; margin-bottom: 12px; word-break: break-all; }
+        .asset-name { font-weight: 600; font-size: 14px; margin-bottom: 12px; word-break: break-all; min-height: 2.5em; }
         
-        .btn { padding: 8px 16px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; background: #fff; width: 100%; margin-top: 5px; }
+        .btn { padding: 8px 16px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; background: #fff; width: 100%; margin-top: 5px; transition: 0.1s; }
+        .btn:hover { background: #f3f4f6; }
         .btn-primary { background: var(--primary); color: white; border: none; }
-        .btn-header { background: none; border: 1px solid white; color: white; width: auto; margin: 0 5px; }
-        .btn-danger { color: #cf222e; border-color: #cf222e; }
+        .btn-header { background: none; border: 1px solid white; color: white; width: auto; margin-left: 10px; }
+        .btn-danger { color: var(--danger); border-color: var(--danger); }
+        .btn-danger:hover { background: #ffebe9; }
 
-        /* あの頃のログイン画面 */
+        /* ログイン画面 */
         .login-overlay { position: fixed; inset: 0; background: var(--primary); display: flex; justify-content: center; align-items: center; z-index: 10000; }
-        .login-box { background: white; padding: 40px; border-radius: 12px; text-align: center; }
+        .login-box { background: white; padding: 40px; border-radius: 12px; text-align: center; width: 320px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .login-box input { padding: 12px; border: 1px solid var(--border); border-radius: 6px; width: 100%; box-sizing: border-box; margin-bottom: 16px; }
     </style>
 </head>
 <body>
 
-<div id="login-overlay" class="login-screen login-overlay">
+<div id="login-overlay" class="login-overlay">
     <div class="login-box">
-        <h2 style="margin-top:0">Authenticate</h2>
-        <input type="password" id="pass-field" placeholder="Passcode" style="padding:10px; border:1px solid #ddd; border-radius:6px; width:200px;">
-        <button onclick="login()" class="btn btn-primary" style="margin-top:15px; width:100%; padding:12px;">Login</button>
+        <h2 style="margin-top:0">😎 Authenticate</h2>
+        <input type="password" id="pass-field" placeholder="Passcode" onkeypress="if(event.key==='Enter')login()">
+        <button onclick="login()" class="btn btn-primary" style="padding:14px;">Login</button>
     </div>
 </div>
 
 <header>
-    <div style="font-size: 20px; font-weight: 700;">Asset Manager Pro</div>
+    <div style="font-size: 20px; font-weight: 700;">😎 Asset Manager Pro</div>
     <div style="display:flex;">
-        <button onclick="window.open('https://github.com/nplus-hub/my-assets/upload/main')" class="btn btn-header">GitHubへ追加</button>
+        <button id="gh-upload-link" class="btn btn-header">GitHubへ追加</button>
         <button onclick="location.reload()" class="btn btn-header">Reload</button>
     </div>
 </header>
 
 <div class="container" id="content">
-    <h3 style="border-bottom: 2px solid var(--primary); padding-bottom: 8px;">Assets</h3>
+    <h3 style="border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 24px;">Assets</h3>
     <div class="asset-grid" id="grid"></div>
 </div>
 
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzqQh2-BbIpHYQb2tBjJOpOznf8uAPdsOtL__v8Jigc24RUYhufwNVPr3FBmBdtYr_1Nw/exec";
-    const GH_USER = "nplus-hub";
-    const GH_REPO = "my-assets";
-    const GH_BASE = `https://raw.githubusercontent.com/${GH_USER}/${GH_REPO}/main/`;
+    // ==========================================
+    // 【設定エリア】ここを書き換えるだけでメンテナンス完了
+    // ==========================================
+    const CONFIG = {
+        GAS_URL: "https://script.google.com/macros/s/AKfycbz3biTnoiHYo5y3B5UNn8JRa84z-2mAGbpt8MOYDemohjD3BnQuVQt4oMWDoX4w9yo5bg/exec",
+        GH_USER: "nplus-hub",
+        GH_REPO: "my-assets",
+        BRANCH:  "main"
+    };
 
-    async function login() {
-        const pass = document.getElementById('pass-field').value;
-        const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ type: "auth", pass: pass }) });
-        const result = await res.json();
-        if (result.success) {
-            document.getElementById('login-overlay').style.display = 'none';
-            document.getElementById('content').style.display = 'block';
-            refresh();
-        } else { alert("Passcode incorrect."); }
-    }
-
-    async function refresh() {
-        const grid = document.getElementById('grid');
-        grid.innerHTML = "<p>Loading assets...</p>";
-        try {
-            // 100件まで確実に取得する設定を追加
-            const ghRes = await fetch(`https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/?per_page=100`);
-            const ghFiles = await ghRes.json();
-            const drRes = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ type: "list_drive" }) });
-            const drFiles = await drRes.json();
-
-            grid.innerHTML = "";
-            // GitHub資産表示
-            if(Array.isArray(ghFiles)) {
-                ghFiles.filter(f => f.name.toLowerCase().endsWith('.glb')).forEach(f => render(f.name, GH_BASE + f.name, true));
-            }
-            // Drive資産表示
-            if(Array.isArray(drFiles)) {
-                drFiles.forEach(f => render(f.name, f.id, false));
-            }
-        } catch(e) { grid.innerHTML = "<p>Error loading files.</p>"; }
-    }
-
-    function render(name, path, isGH) {
-        const grid = document.getElementById('grid');
-        const card = document.createElement('div');
-        card.className = 'asset-card';
-        card.innerHTML = `
-            <div class="preview-box">
-                ${isGH ? `<model-viewer src="${path}" auto-rotate camera-controls shadow-intensity="1"></model-viewer>` : `<div style="color:#888; font-size:12px; text-align:center;">Google Drive Asset<br>(Preview Unavailable)</div>`}
-            </div>
-            <div class="asset-info">
-                <div class="asset-name">${name}</div>
-                ${isGH ? `<button class="btn" onclick="copy('${path}')">URLコピー</button>` : `<button class="btn btn-danger" onclick="del('${path}')">Driveから削除</button>`}
-            </div>`;
-        grid.appendChild(card);
-    }
-
-    async function del(id) {
-        if (!confirm("Delete from Drive?")) return;
-        await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ type: "delete", id: id }) });
-        refresh();
-    }
-
-    function copy(t) { navigator.clipboard.writeText(t).then(() => alert("Copied!")); }
-</script>
-</body>
-</html>
+    // 内部で使用する定数（CONFIGを元に自動生成）
+    const GH_BASE_RAW = `https://raw.githubusercontent.com/${CONFIG.GH_USER}/${CONFIG.GH_REPO}/${CONFIG.BRANCH}/`;
+    const GH_API_URL  = `https://api.github.com/repos/${CONFIG.GH_USER}/${

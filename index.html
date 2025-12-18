@@ -85,4 +85,114 @@
         const pass = input.value.replace(/[^0-9]/g, '');
         if (!pass) {
             alert("パスコードを入力してください");
-            return
+            return;
+        }
+
+        closeModal();
+        // 画像リクエスト方式（通信エラー＆ページ移動回避）
+        const img = new Image();
+        img.src = `${SETTINGS.GAS_URL}?delId=${state.currentId}&pass=${encodeURIComponent(pass)}&t=${Date.now()}`;
+        
+        alert("削除しました。");
+        if (state.currentElement) state.currentElement.remove();
+    }
+
+    // 入力監視：数字以外を弾く
+    document.getElementById('pass-input').addEventListener('input', (e) => {
+        e.target.value = e.target.value.replace(/[^0-9]/g, '');
+    });
+
+    // ファイル判定ロジック
+    function getFileMeta(name) {
+        const lower = name.toLowerCase();
+        const ext = name.split('.').pop().toLowerCase();
+        const is3D = lower.endsWith('.glb') || lower.endsWith('.gltf') || lower.includes('glb');
+        return {
+            is3D: is3D,
+            emoji: is3D ? '📦' : (SETTINGS.EMOJI_MAP[ext] || '📄'),
+            label: is3D ? 'GLB' : ext.toUpperCase() || 'FILE'
+        };
+    }
+
+    // カード生成
+    function createCard(name, url, source, color, isDrive = false, fileId = '') {
+        const meta = getFileMeta(name);
+        const copyLink = isDrive ? `https://drive.google.com/uc?export=view&id=${fileId}` : url;
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+            <div class="preview">
+                <div class="badge" style="background:${color}">${esc(source)}</div>
+                <div class="icon-box">
+                    <span class="icon-emoji">${meta.emoji}</span>
+                    <span class="ext-label">${esc(meta.label)}</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="file-name" title="${esc(name)}">${esc(name)}</div>
+                <div class="btn-group">
+                    <button type="button" class="btn" onclick="copyToClipboard('${esc(copyLink)}')">コピー</button>
+                    ${isDrive ? `<button type="button" class="btn btn-del" id="del-${fileId}">削除</button>` : ''}
+                </div>
+            </div>
+        `;
+        document.getElementById('gallery').appendChild(card);
+        setupCardPreview(card, meta, isDrive, fileId, url);
+    }
+
+    function setupCardPreview(card, meta, isDrive, fileId, url) {
+        const previewArea = card.querySelector('.preview');
+        const iconBox = card.querySelector('.icon-box');
+        if (isDrive) {
+            if (!meta.is3D) {
+                const ifr = document.createElement('iframe');
+                ifr.src = `https://drive.google.com/file/d/${fileId}/preview`;
+                ifr.onload = () => { if(iconBox) iconBox.style.display = 'none'; };
+                previewArea.appendChild(ifr);
+            }
+            const delBtn = card.querySelector(`#del-${fileId}`);
+            if(delBtn) delBtn.onclick = () => openModal(fileId, card);
+        } else {
+            const ext = meta.label.toLowerCase();
+            if (['jpg','jpeg','png','gif','webp'].includes(ext)) {
+                const img = document.createElement('img');
+                img.src = url;
+                img.onload = () => { if(iconBox) iconBox.style.display = 'none'; };
+                previewArea.appendChild(img);
+            } else if (meta.is3D) {
+                const mv = document.createElement('model-viewer');
+                mv.src = url; mv.setAttribute('auto-rotate', ''); mv.setAttribute('camera-controls', '');
+                mv.onload = () => { if(iconBox) iconBox.style.display = 'none'; };
+                previewArea.appendChild(mv);
+            }
+        }
+    }
+
+    window.copyToClipboard = (text) => {
+        navigator.clipboard.writeText(text).then(() => alert('コピー完了'));
+    };
+
+    // 初期化
+    async function init() {
+        // 設定チェック
+        if (SETTINGS.GAS_URL.includes("あなたのGAS")) {
+            console.error("GASのURLが設定されていません。");
+        }
+
+        // GitHub
+        fetch(`https://api.github.com/repos/${SETTINGS.GITHUB.USER}/${SETTINGS.GITHUB.REPO}/contents/`)
+            .then(r => r.json()).then(data => {
+                if(Array.isArray(data)) data.forEach(f => f.type==='file' && f.name!=='index.html' && createCard(f.name, f.download_url, 'GitHub', '#24292f'));
+            }).catch(e => console.error("GitHub取得失敗:", e));
+        
+        // Drive
+        fetch(`${SETTINGS.GAS_URL}?getFiles=true`)
+            .then(r => r.json()).then(data => {
+                if(Array.isArray(data)) data.forEach(f => f.id && createCard(f.name, '', 'Drive', '#34a853', true, f.id));
+            }).catch(e => console.error("Drive取得失敗:", e));
+    }
+
+    init();
+</script>
+</body>
+</html>

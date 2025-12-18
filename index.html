@@ -1,8 +1,90 @@
-<div style="background:#eee; padding:10px; text-align:center; border-radius:10px;">
-    <p>【管理者用】素材の追加はこちらから</p>
-    <a href="https://github.com/nplus-assets/nplus-assets.github.io/upload/main/assets" 
-       target="_blank" 
-       style="color:blue; font-weight:bold;">
-       👉 ここをクリックしてassetsフォルダにアップロード
-    </a>
-</div>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Asset Library</title>
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
+    <style>
+        :root { --bg: #f8f9fa; --card: #ffffff; --primary: #0d6efd; --success: #198754; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 20px; }
+        .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
+        .card { background: var(--card); border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #eee; display: flex; flex-direction: column; }
+        
+        /* プレビューエリア */
+        .preview { width: 100%; height: 180px; background: #eee; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .preview img, .preview video, .preview model-viewer { width: 100%; height: 100%; object-fit: cover; }
+        
+        .card-content { padding: 15px; flex-grow: 1; }
+        .title { font-weight: bold; font-size: 1rem; margin-bottom: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        /* ボタン類 */
+        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .btn { padding: 8px; border-radius: 5px; text-decoration: none; text-align: center; font-size: 0.85rem; cursor: pointer; border: none; font-weight: bold; }
+        .btn-download { background: var(--primary); color: white; }
+        .btn-copy { background: #6c757d; color: white; }
+        .btn-copy.copied { background: var(--success); }
+    </style>
+</head>
+<body>
+
+<h1 style="text-align:center;">Asset Manager</h1>
+
+<div class="container" id="asset-container">
+    </div>
+
+<script>
+    // ★【ここを編集！】アップロードしたファイル名をここに追加するだけ
+    const assets = [
+        { name: "背景画像01", file: "image.png", type: "image" },
+        { name: "デモ動画", file: "video.mp4", type: "video" },
+        { name: "BGM素材", file: "music.mp3", type: "audio" },
+        { name: "3Dモデル", file: "model.glb", type: "3d" }
+    ];
+
+    // ベースとなるURL（リポジトリ名変更に対応）
+    const baseURL = window.location.origin + window.location.pathname + "assets/";
+
+    const container = document.getElementById('asset-container');
+
+    assets.forEach(asset => {
+        const fullURL = baseURL + asset.file;
+        const card = document.createElement('div');
+        card.className = 'card';
+
+        // プレビュー部分の生成
+        let previewHTML = '';
+        if(asset.type === 'image') previewHTML = `<img src="${fullURL}">`;
+        else if(asset.type === 'video') previewHTML = `<video src="${fullURL}" muted loop onmouseover="this.play()" onmouseout="this.pause()"></video>`;
+        else if(asset.type === 'audio') previewHTML = `<div style="font-size:3rem;">🎵</div>`;
+        else if(asset.type === '3d') previewHTML = `<model-viewer src="${fullURL}" auto-rotate camera-controls></model-viewer>`;
+
+        card.innerHTML = `
+            <div class="preview">${previewHTML}</div>
+            <div class="card-content">
+                <div class="title">${asset.name}</div>
+                <div class="btn-group">
+                    <a href="${fullURL}" download class="btn btn-download">保存</a>
+                    <button onclick="copyLink('${fullURL}', this)" class="btn btn-copy">リンクコピー</button>
+                </div>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+
+    // コピー機能
+    function copyLink(url, btn) {
+        navigator.clipboard.writeText(url).then(() => {
+            const originalText = btn.innerText;
+            btn.innerText = "完了！";
+            btn.classList.add('copied');
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.classList.remove('copied');
+            }, 2000);
+        });
+    }
+</script>
+
+</body>
+</html>

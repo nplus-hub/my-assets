@@ -7,6 +7,7 @@
     <link rel="icon" href="https://raw.githubusercontent.com/nplus-hub/my-assets/main/glasses-purple-yellow-diamond.png">
     
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
+    
     <style>
         :root { --primary: #24292f; --bg: #f0f2f5; --card: #fff; --danger: #cf222e; --border: #e1e4e8; --success: #2da44e; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 0; }
@@ -19,11 +20,17 @@
         .card { background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; position: relative; border: 1px solid var(--border); height: 400px; transition: 0.2s; }
         .card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
         
+        /* プレビューエリア：以前の安定した重ね合わせ設定 */
         .preview { width: 100%; height: 240px; background: #eaedef; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid var(--border); }
-        model-viewer, .preview img, .preview iframe { width: 100%; height: 100%; border: none; object-fit: contain; position: absolute; top: 0; left: 0; z-index: 2; background: #eaedef; }
         
-        /* プレビュー失敗時の代替表示（背面） */
-        .fallback-box { text-align: center; z-index: 1; display: flex; flex-direction: column; align-items: center; }
+        /* 3Dモデル表示：透明背景と最前面配置 */
+        model-viewer { width: 100%; height: 100%; background-color: transparent; --poster-color: transparent; position: absolute; top: 0; left: 0; z-index: 5; }
+        
+        /* 画像・iframe */
+        .preview img, .preview iframe { width: 100%; height: 100%; border: none; object-fit: contain; position: absolute; top: 0; left: 0; z-index: 4; background: #eaedef; }
+        
+        /* 代替アイコン（背面：z-index 1） */
+        .fallback-box { text-align: center; z-index: 1; display: flex; flex-direction: column; align-items: center; transition: opacity 0.3s; }
         .fallback-emoji { font-size: 50px; display: block; margin-bottom: 5px; }
         .fallback-ext { font-size: 11px; font-weight: bold; color: #666; background: #dee2e6; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; }
 
@@ -33,14 +40,14 @@
         .badge { position: absolute; top: 10px; right: 10px; padding: 4px 10px; border-radius: 20px; color: white; font-size: 10px; font-weight: bold; z-index: 20; }
         
         .btn-group { display: flex; gap: 8px; margin-top: 10px; }
-        .btn { flex: 1; padding: 10px; cursor: pointer; border: 1px solid #d1d5da; background: #fafbfc; border-radius: 6px; font-size: 12px; font-weight: bold; transition: 0.1s; }
+        .btn { flex: 1; padding: 10px; cursor: pointer; border: 1px solid #d1d5da; background: #fafbfc; border-radius: 6px; font-size: 12px; font-weight: bold; }
         .btn:hover { background: #f3f4f6; }
         .btn-header { background: none; border: 1px solid white; color: white; width: auto; margin-left: 10px; }
         .btn-upload { background: var(--success); border: none; }
         .btn-del { color: var(--danger); border-color: var(--danger); }
 
         #pass-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 10000; align-items: center; justify-content: center; }
-        .modal-content { background: #fff; padding: 30px; border-radius: 12px; text-align: center; width: 280px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        .modal-content { background: #fff; padding: 30px; border-radius: 12px; text-align: center; width: 280px; }
         .modal-content input { width: 100%; font-size: 24px; text-align: center; padding: 10px; margin: 15px 0; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; }
     </style>
 </head>
@@ -48,7 +55,7 @@
 
 <div id="pass-modal">
     <div class="modal-content">
-        <h3 style="margin:0">削除の確認</h3>
+        <h3>削除確認</h3>
         <input type="tel" id="pass-input" placeholder="****" maxlength="4">
         <div style="display:flex; gap:10px; margin-top:10px">
             <button class="btn" onclick="closeModal()">戻る</button>
@@ -59,7 +66,7 @@
 
 <header>
     <div class="logo">Asset Manager Pro</div>
-    <div style="display:flex; align-items: center;">
+    <div style="display:flex;">
         <input type="file" id="file-input" style="display:none" onchange="handleUpload(this)">
         <button onclick="document.getElementById('file-input').click()" class="btn btn-header btn-upload">Driveへ保存</button>
         <button onclick="window.open('https://github.com/nplus-hub/my-assets/upload/main')" class="btn btn-header">GitHubへ追加</button>
@@ -72,18 +79,27 @@
 <script>
     const CONFIG = {
         GITHUB: { USER: "nplus-hub", REPO: "my-assets" },
-        GAS_URL: "https://script.google.com/macros/s/AKfycbwj3FMvL4xcSTzKUsYWKrrnWO1ZCzrE_veNxORuq55hQeiJHtPHq8s2oKsJrasjPyqGxw/exec" // ★ここを書き換えてください
+        GAS_URL: "https://script.google.com/macros/s/AKfycbwj3FMvL4xcSTzKUsYWKrrnWO1ZCzrE_veNxORuq55hQeiJHtPHq8s2oKsJrasjPyqGxw/exec" // ★書き換え忘れにご注意ください
     };
 
     let state = { currentId: null };
 
-    // --- ファイル保存機能 (Drive) ---
+    // 削除・アップロード機能
+    function openModal(id) { state.currentId = id; document.getElementById('pass-modal').style.display = 'flex'; document.getElementById('pass-input').focus(); }
+    function closeModal() { document.getElementById('pass-modal').style.display = 'none'; }
+    function performDelete() {
+        const pass = document.getElementById('pass-input').value;
+        const img = new Image();
+        img.src = `${CONFIG.GAS_URL}?delId=${state.currentId}&pass=${encodeURIComponent(pass)}&t=${Date.now()}`;
+        alert("リクエストを送信しました。");
+        closeModal();
+        setTimeout(() => location.reload(), 1500);
+    }
+
     async function handleUpload(input) {
-        const file = input.files[0];
-        if (!file) return;
+        const file = input.files[0]; if (!file) return;
         const btn = document.querySelector('.btn-upload');
         btn.innerText = "保存中..."; btn.disabled = true;
-
         const reader = new FileReader();
         reader.onload = async (e) => {
             const base64Data = e.target.result.split(',')[1];
@@ -95,36 +111,93 @@
                 const result = await res.json();
                 if (result.status === "success") { alert("保存完了"); location.reload(); }
                 else { alert("エラー: " + result.message); }
-            } catch (err) { alert("ネットワークエラー"); }
+            } catch (err) { alert("失敗しました"); }
             btn.innerText = "Driveへ保存"; btn.disabled = false;
         };
         reader.readAsDataURL(file);
     }
 
-    // --- 削除機能 ---
-    function openModal(id) {
-        state.currentId = id;
-        document.getElementById('pass-modal').style.display = 'flex';
-        const input = document.getElementById('pass-input');
-        input.value = ''; input.focus();
-    }
-    function closeModal() { document.getElementById('pass-modal').style.display = 'none'; }
-    function performDelete() {
-        const pass = document.getElementById('pass-input').value;
-        if(!pass) return;
-        const img = new Image();
-        img.src = `${CONFIG.GAS_URL}?delId=${state.currentId}&pass=${encodeURIComponent(pass)}&t=${Date.now()}`;
-        alert("削除リクエスト送信完了");
-        closeModal();
-        setTimeout(() => location.reload(), 1500);
-    }
-
-    // --- カード生成 (プレビュー or アイコン) ---
+    // --- 以前上手く機能していた3Dプレビューロジックを再適用 ---
     function createCard(name, url, source, color, isDrive = false, fileId = '') {
         const lower = name.toLowerCase();
         const ext = name.split('.').pop().toUpperCase();
-        const displayUrl = isDrive ? `https://drive.google.com/uc?export=view&id=${fileId}` : url;
+        
+        // Driveの3Dモデルはuc?idの形式が最も安定します
+        let displayUrl = isDrive ? `https://docs.google.com/uc?export=download&id=${fileId}` : url;
         
         let emoji = '📄';
         if (lower.endsWith('.glb')) emoji = '📦';
-        else if (['jpg','jpeg','png','gif
+        else if (['jpg','jpeg','png','gif','webp'].some(e => lower.endsWith(e))) emoji = '🖼️';
+
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+            <div class="preview">
+                <div class="badge" style="background:${color}">${source}</div>
+                <div class="fallback-box">
+                    <span class="fallback-emoji">${emoji}</span>
+                    <span class="fallback-ext">${ext}</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="file-name" title="${name}">${name}</div>
+                <div class="btn-group">
+                    <button class="btn" onclick="navigator.clipboard.writeText('${isDrive ? 'https://drive.google.com/uc?export=view&id='+fileId : url}').then(()=>alert('コピー完了'))">コピー</button>
+                    ${isDrive ? `<button class="btn btn-del" onclick="openModal('${fileId}')">削除</button>` : ''}
+                </div>
+            </div>`;
+        document.getElementById('gallery').appendChild(card);
+
+        const previewArea = card.querySelector('.preview');
+        const fallback = card.querySelector('.fallback-box');
+
+        if (lower.endsWith('.glb')) {
+            const mv = document.createElement('model-viewer');
+            mv.src = displayUrl;
+            mv.setAttribute('auto-rotate', '');
+            mv.setAttribute('camera-controls', '');
+            mv.setAttribute('ar', '');
+            mv.setAttribute('loading', 'lazy');
+            mv.setAttribute('crossorigin', 'anonymous');
+            
+            // モデル読み込み完了時にアイコンを隠す
+            mv.addEventListener('load', () => {
+                fallback.style.opacity = "0";
+            });
+            // エラー時はモデルビューアーを消してアイコンを確実に見せる
+            mv.addEventListener('error', () => {
+                mv.remove();
+                fallback.style.opacity = "1";
+            });
+            previewArea.appendChild(mv);
+
+        } else if (isDrive) {
+            const ifr = document.createElement('iframe');
+            ifr.src = `https://drive.google.com/file/d/${fileId}/preview`;
+            previewArea.appendChild(ifr);
+        } else if (['jpg','jpeg','png','gif','webp'].some(e => lower.endsWith(e))) {
+            const img = document.createElement('img');
+            img.src = displayUrl;
+            img.onerror = () => img.remove();
+            previewArea.appendChild(img);
+        }
+    }
+
+    (function init() {
+        // GitHub
+        fetch(`https://api.github.com/repos/${CONFIG.GITHUB.USER}/${CONFIG.GITHUB.REPO}/contents/`)
+            .then(r => r.json()).then(data => {
+                if(Array.isArray(data)) data.forEach(f => f.type==='file' && f.name!=='index.html' && createCard(f.name, f.download_url, 'GitHub', '#24292f'));
+            });
+        // Drive
+        if (CONFIG.GAS_URL.startsWith("http")) {
+            fetch(`${CONFIG.GAS_URL}?getFiles=true`).then(r => r.json()).then(data => {
+                if(Array.isArray(data)) data.forEach(f => createCard(f.name, '', 'Drive', '#34a853', true, f.id));
+            });
+        }
+    })();
+
+    document.getElementById('pass-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') performDelete(); });
+</script>
+</body>
+</html>

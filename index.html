@@ -1,52 +1,32 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <title>Drive Asset Sync</title>
-    <style>
-        body { font-family: sans-serif; background: #f0f2f5; padding: 20px; }
-        .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
-        .card { background: #fff; padding: 10px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center; }
-        .preview { height: 150px; background: #eee; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 5px; }
-        .preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
-        .file-name { font-size: 13px; font-weight: bold; margin: 10px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    </style>
-</head>
-<body>
-
-<div class="container" id="gallery">
-    <p id="msg">ドライブを読み込み中...</p>
+<div class="header">
+    <h1>Google Drive 素材一覧</h1>
+    <p>※Googleドライブのフォルダにファイルを追加すると、ここに自動で表示されます</p>
 </div>
 
+<div class="container" id="drive-gallery">
+    </div>
+
 <script>
-    // ★GASでデプロイしたウェブアプリURLをここに貼り付け
     const GAS_URL = "あなたのGASウェブアプリURL";
 
-    async function loadFromDrive() {
-        try {
-            const res = await fetch(GAS_URL);
-            const files = await res.json();
-            const gallery = document.getElementById('gallery');
-            document.getElementById('msg').remove();
+    async function fetchFromDrive() {
+        const res = await fetch(GAS_URL);
+        const files = await res.json();
+        const gallery = document.getElementById('drive-gallery');
 
-            files.forEach(file => {
-                // ドライブの画像を直接表示するためのURL形式
-                const thumbURL = `https://lh3.googleusercontent.com/d/${file.id}`;
-                
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = `
-                    <div class="preview"><img src="${thumbURL}"></div>
-                    <div class="file-name">${file.name}</div>
-                    <a href="${thumbURL}" target="_blank" style="font-size:11px; color:#007bff;">拡大表示</a>
-                `;
-                gallery.appendChild(card);
-            });
-        } catch (e) {
-            document.getElementById('msg').innerText = "読み込みエラーが発生しました。";
-        }
+        files.forEach(file => {
+            // ドライブの画像を表示するための直リンクを生成
+            const imageUrl = `https://lh3.googleusercontent.com/d/${file.id}`;
+            
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <div class="preview"><img src="${imageUrl}"></div>
+                <div class="file-name">${file.name}</div>
+                <button class="btn" onclick="navigator.clipboard.writeText('${imageUrl}')">URLコピー</button>
+            `;
+            gallery.appendChild(card);
+        });
     }
-    loadFromDrive();
+    fetchFromDrive();
 </script>
-</body>
-</html>

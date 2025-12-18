@@ -11,9 +11,12 @@
         .preview { width: 100%; height: 200px; background: #eaedef; display: flex; align-items: center; justify-content: center; overflow: hidden; }
         .preview img, model-viewer, video, iframe { width: 100%; height: 100%; border: none; object-fit: contain; }
         .text-preview { font-size: 10px; padding: 10px; background: #2d2d2d; color: #adff2f; width: 100%; height: 100%; white-space: pre-wrap; margin: 0; overflow: hidden; box-sizing: border-box; }
-        .icon-box { text-align: center; }
-        .icon-emoji { font-size: 50px; display: block; }
-        .ext-label { font-size: 12px; font-weight: bold; color: #666; background: #ddd; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; }
+        
+        /* アイコン表示用のスタイル */
+        .icon-box { text-align: center; display: flex; flex-direction: column; align-items: center; }
+        .icon-emoji { font-size: 54px; margin-bottom: 5px; }
+        .ext-label { font-size: 11px; font-weight: bold; color: white; padding: 2px 10px; border-radius: 4px; text-transform: uppercase; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        
         .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
         .file-name { font-size: 13px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #333; }
         .badge { position: absolute; top: 10px; right: 10px; padding: 4px 8px; border-radius: 6px; color: white; font-size: 10px; font-weight: bold; z-index: 5; }
@@ -28,8 +31,32 @@
     const GITHUB_REPO = "my-assets";
     const GAS_URL = "https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLirzflKB7JWeS9hDCvMQS-UecYkN2lZGeAs0oZIgDa-0_K0Y0fQg3usuDkq3tfyNsAgz9wv5-hW5FC4yQ7u3gDbmGhkZt559oPWQS9sMhaGVCt5RAzTmMDMs8E7IW6P5xw_tfbHXdr-PJESGxawBje5FttiVZw0Bg5ZxwQja7lRLbNHV3dWjqhcJRpxO2jU57t_AsWsc-ETGpxiS9GV2zRtv3Wt9lyz27TiXGSs3Ogj54aCSgFwQ9a03-2m97A9P6LuRvKL--1Uu40_1ARqb84h3SdDabsbUl1VHDp1&lib=MurWCq0JNvz56-vjWDQz3gypAWhvqL-Aw"; 
 
+    // ★拡張子ごとにアイコンと色を定義する関数
+    function getIconInfo(ext) {
+        const types = {
+            'pdf':  { emoji: '📄', color: '#e74c3c' }, // 赤
+            'zip':  { emoji: '📦', color: '#f39c12' }, // オレンジ
+            'rar':  { emoji: '📦', color: '#f39c12' },
+            'glb':  { emoji: '🧊', color: '#3498db' }, // 青
+            'gltf': { emoji: '🧊', color: '#3498db' },
+            'mp3':  { emoji: '🎵', color: '#9b59b6' }, // 紫
+            'wav':  { emoji: '🎵', color: '#9b59b6' },
+            'txt':  { emoji: '📝', color: '#7f8c8d' }, // グレー
+            'md':   { emoji: '📝', color: '#2c3e50' },
+            'js':   { emoji: '📜', color: '#f1c40f' }, // 黄
+            'html': { emoji: '🌐', color: '#e67e22' }, // 濃いオレンジ
+            'css':  { emoji: '🎨', color: '#2980b9' }  // 濃い青
+        };
+        return types[ext] || { emoji: '📄', color: '#95a5a6' }; // デフォルト
+    }
+
     function getIconHtml(ext) {
-        return `<div class="icon-box"><span class="icon-emoji">📄</span><span class="ext-label">${ext}</span></div>`;
+        const info = getIconInfo(ext);
+        return `
+            <div class="icon-box">
+                <span class="icon-emoji">${info.emoji}</span>
+                <span class="ext-label" style="background:${info.color}">${ext}</span>
+            </div>`;
     }
 
     function createCard(name, url, source, color, isDrive = false, fileId = '') {
@@ -49,18 +76,16 @@
         badge.textContent = source;
         previewArea.appendChild(badge);
 
-        // --- プレビュー生成ロジック ---
         if (['txt', 'js', 'json', 'html', 'css', 'md'].includes(ext)) {
             const pre = document.createElement('pre');
             pre.className = 'text-preview';
             pre.textContent = 'Loading...';
             const fetchUrl = isDrive ? `https://drive.google.com/uc?export=download&id=${fileId}` : url;
             fetch(fetchUrl).then(r => r.text()).then(t => { pre.textContent = t.substring(0, 500); })
-                .catch(() => { previewArea.innerHTML = getIconHtml(ext); });
+                .catch(() => { previewArea.innerHTML = ''; previewArea.appendChild(badge); previewArea.insertAdjacentHTML('beforeend', getIconHtml(ext)); });
             previewArea.appendChild(pre);
         } 
         else if (ext === 'gif' || ext === 'pdf' || (isDrive && ['mp4', 'webm'].includes(ext))) {
-            // GIF、PDF、ドライブ動画は確実な iframe プレビューを使用
             const iframe = document.createElement('iframe');
             iframe.src = isDrive ? `https://drive.google.com/file/d/${fileId}/preview` : url;
             previewArea.appendChild(iframe);
@@ -68,7 +93,11 @@
         else if (['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
             const img = document.createElement('img');
             img.src = isDrive ? `https://drive.google.com/uc?export=view&id=${fileId}` : url;
-            img.onerror = () => { previewArea.innerHTML = getIconHtml(ext); previewArea.appendChild(badge); };
+            img.onerror = () => { 
+                previewArea.innerHTML = ''; 
+                previewArea.appendChild(badge); 
+                previewArea.insertAdjacentHTML('beforeend', getIconHtml(ext)); 
+            };
             previewArea.appendChild(img);
         } 
         else if (!isDrive && ['glb', 'gltf'].includes(ext)) {
@@ -79,16 +108,14 @@
             previewArea.appendChild(mv);
         }
         else {
-            previewArea.innerHTML += getIconHtml(ext);
+            previewArea.insertAdjacentHTML('beforeend', getIconHtml(ext));
         }
 
         const cardBody = document.createElement('div');
         cardBody.className = 'card-body';
-        
         const fileName = document.createElement('div');
         fileName.className = 'file-name';
         fileName.textContent = name;
-        
         const btn = document.createElement('button');
         btn.className = 'btn';
         btn.textContent = 'URLをコピー';

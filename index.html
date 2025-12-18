@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Asset Manager - Final Edition</title>
+    <title>Asset Manager - Full Version</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
     <style>
         body { font-family: -apple-system, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
@@ -11,8 +11,11 @@
         .preview { width: 100%; height: 230px; background: #eaedef; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
         .preview iframe, .preview img, model-viewer { width: 100%; height: 100%; border: none; object-fit: contain; }
         .text-preview { font-size: 10px; padding: 12px; background: #f8f9fa; color: #333; width: 100%; height: 100%; white-space: pre-wrap; margin: 0; overflow: hidden; box-sizing: border-box; text-align: left; }
+        .icon-box { text-align: center; }
+        .icon-emoji { font-size: 60px; display: block; margin-bottom: 8px; }
+        .ext-label { font-size: 11px; font-weight: bold; color: #666; background: #dee2e6; padding: 3px 10px; border-radius: 4px; text-transform: uppercase; }
         .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
-        .file-name { font-size: 13px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #333; margin-bottom: 8px; }
+        .file-name { font-size: 13px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #333; }
         .badge { position: absolute; top: 12px; right: 12px; padding: 4px 10px; border-radius: 20px; color: white; font-size: 10px; font-weight: bold; z-index: 10; }
         .btn-group { display: flex; gap: 8px; }
         .btn { flex: 1; padding: 10px; cursor: pointer; border: 1px solid #d1d5da; background: #fafbfc; border-radius: 6px; font-size: 12px; font-weight: bold; }
@@ -26,9 +29,14 @@
 <script>
     const GITHUB_USER = "nplus-hub";
     const GITHUB_REPO = "my-assets";
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzM9A5F_dHF6F8m2fMmU_QCAfARp-uv_C6UXViFU74bV21-D7kwuYg-PePtGM5GvWC-cA/exec"; 
+    const GAS_URL = "https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLjfIx0MHAW1HPL-VDktkxt-Efnoql238JC_EtlSPeaRkVgjHf4kN3Ndnq4SWk23mJsbOb6MmC8gbRY6uEBKEDWp8jtSi9irx1wljAA1BESV1cM-6qGKZUghPHzdCsLrKEgqxwv_Sp-lXGRXsZD2BAGEufaFfIKYkrzBwc90yfaxAR5bZ8TETQXabBOmrGM6wnLWf0YeNaE6cKM5WU5Tr9oBBN1Wk-7W9nQ1rUiauEdxGwvQRoNe04hLwwMXXT7fw88GArkPLNUgtL35ffZO_0aQ6ZukcyYz3_1LCuAS&lib=MurWCq0JNvz56-vjWDQz3gypAWhvqL-Aw"; 
 
     const esc = (str) => str ? str.toString().replace(/[&'`"<>]/g, (m) => ({'&':'&amp;',"'":"&#39;",'`':"&#96;",'"':"&quot;",'<':"&lt;",'>':"&gt;"}[m])) : "";
+
+    function getEmoji(ext) {
+        const map = {'pdf':'📄','txt':'📝','md':'📝','glb':'📦','gltf':'📦','zip':'📚','mp3':'🎵','png':'🖼️','jpg':'🖼️','gif':'🖼️','webp':'🖼️'};
+        return map[ext] || '📄';
+    }
 
     async function deleteFile(fileId, cardElement) {
         if (!confirm("Googleドライブのゴミ箱へ移動しますか？")) return;
@@ -45,12 +53,18 @@
     function createCard(name, url, source, color, isDrive = false, fileId = '') {
         const gallery = document.getElementById('gallery');
         const ext = name.split('.').pop().toLowerCase();
+        const emoji = getEmoji(ext);
         const copyUrl = isDrive ? `https://drive.google.com/uc?export=view&id=${fileId}` : url;
+
         const card = document.createElement('div');
         card.className = 'card';
         card.innerHTML = `
             <div class="preview">
                 <div class="badge" style="background:${color}">${esc(source)}</div>
+                <div class="icon-box">
+                    <span class="icon-emoji">${emoji}</span>
+                    <span class="ext-label">${esc(ext)}</span>
+                </div>
             </div>
             <div class="card-body">
                 <div class="file-name" title="${esc(name)}">${esc(name)}</div>
@@ -66,31 +80,35 @@
         const badgeHtml = `<div class="badge" style="background:${color}">${esc(source)}</div>`;
 
         if (isDrive) {
-            previewArea.innerHTML += `<iframe src="https://drive.google.com/file/d/${fileId}/preview"></iframe>`;
+            // Google公式プレビューを使用
+            previewArea.innerHTML = badgeHtml + `<iframe src="https://drive.google.com/file/d/${fileId}/preview"></iframe>`;
             card.querySelector(`#del-${fileId}`).onclick = () => deleteFile(fileId, card);
         } else {
+            // GitHub用プレビュー
             if (['jpg','jpeg','png','gif','webp'].includes(ext)) {
-                previewArea.innerHTML += `<img src="${url}" loading="lazy">`;
+                previewArea.innerHTML = badgeHtml + `<img src="${url}" loading="lazy">`;
             } else if (['txt','md','js','json'].includes(ext)) {
                 fetch(url).then(r => r.text()).then(t => {
-                    previewArea.innerHTML += `<pre class="text-preview">${esc(t.substring(0, 500))}</pre>`;
+                    previewArea.innerHTML = badgeHtml + `<pre class="text-preview">${esc(t.substring(0, 500))}</pre>`;
                 });
             } else if (['glb','gltf'].includes(ext)) {
-                previewArea.innerHTML += `<model-viewer src="${esc(url)}" auto-rotate camera-controls></model-viewer>`;
+                previewArea.innerHTML = badgeHtml + `<model-viewer src="${esc(url)}" auto-rotate camera-controls></model-viewer>`;
             }
         }
     }
 
     async function init() {
-        // GitHub
+        // GitHub取得
         fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/`)
             .then(r => r.json()).then(data => {
                 if(Array.isArray(data)) data.forEach(f => f.type==='file' && f.name!=='index.html' && createCard(f.name, f.download_url, 'GitHub', '#24292f'));
-            });
-        // Drive
+            }).catch(e => console.error(e));
+
+        // Drive取得
         fetch(GAS_URL).then(r => r.json()).then(data => {
             if(Array.isArray(data)) data.forEach(f => f.id && createCard(f.name, '', 'Drive', '#34a853', true, f.id));
-        });
+            else if (data.status === "error") alert("Driveエラー: " + data.message);
+        }).catch(e => console.error(e));
     }
     init();
 </script>

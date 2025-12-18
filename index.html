@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Asset Manager Pro - Official Stable</title>
+    <title>Asset Manager Pro - Reliable Edition</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
     <style>
         body { font-family: -apple-system, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
@@ -25,6 +25,11 @@
     </style>
 </head>
 <body>
+    <form id="delete-form" action="" method="get" style="display:none;">
+        <input type="hidden" name="delId" id="form-del-id">
+        <input type="hidden" name="pass" id="form-pass">
+    </form>
+
     <div id="pass-modal">
         <div class="modal-content">
             <h3>削除の確認</h3>
@@ -32,7 +37,7 @@
             <input type="tel" id="pass-input" pattern="\d*" placeholder="****">
             <div style="display:flex; gap:10px;">
                 <button class="btn" onclick="closeModal()">キャンセル</button>
-                <button class="btn btn-del" id="confirm-del-btn">削除</button>
+                <button class="btn btn-del" onclick="submitDelete()">削除実行</button>
             </div>
         </div>
     </div>
@@ -41,48 +46,37 @@
 <script>
     const GITHUB_USER = "nplus-hub";
     const GITHUB_REPO = "my-assets";
-    const GAS_URL = "https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLidWpOUWCUgoLs3SP8xTzeV8IxT5lUkwQHPdRp5eJoUDGy5vprb4Vmv4uUICvjN7F4bwa4ntdvLJuU42SnBuxQt93UwogZQ4XBGaxicogBjKjdP_54KPiYHNl8lXaEtKBEfe1le-ty2K3kP8AfMtGdqejVXxjNOZd4Jv8hxG2kZlTqqzfLBorHydM0MSsZYLz9busj8OX3eH3FXlw6E5w_pH3TPPeidSgleTpHIQr6WBNguK8Z5C-3r47EKeD3AnejPWBNxLBioCC2Rvt7h6ohkcitXIslXbSpIJObs&lib=MurWCq0JNvz56-vjWDQz3gypAWhvqL-Aw"; // ★新URLを貼ってください
-
-    let currentDeleteId = null;
-    let currentCardElement = null;
+    const GAS_URL = "https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLilTGbbszPxDSQTu6Nlgv7PjpV2F8nLxEGb744AwKOdAJkvfgEGoNl7kLlnDkM0NjfDlQax7rR6wuecYTFZWvE0eTKZhgat5ZINuYKWWtrQpfztpNMWjdjztYdrDfAX_g_Ur_l_NsGS4Q5IRhFVbFnzBscKxggfI9FvbmrwRyKuRuN5UQkeIimZwGf1nD2NsIdOAC5IGQvlwkpEZhi9TEKrIdJ5v4WQARTC9gElGzmzH94ckTB8TaKS388ZEbifi5XTcSHNRtVdg8P18iNW4jrMnGck76-yt6Ukb2m_&lib=MurWCq0JNvz56-vjWDQz3gypAWhvqL-Aw"; // ★新URLを貼ってください
 
     const esc = (str) => str ? str.toString().replace(/[&'`"<>]/g, (m) => ({'&':'&amp;',"'":"&#39;",'`':"&#96;",'"':"&quot;",'<':"&lt;",'>':"&gt;"}[m])) : "";
 
     function getFileInfo(name) {
-        const extMatch = name.match(/\.([a-z0-9]+)$/i);
-        const ext = extMatch ? extMatch[1].toLowerCase() : "";
-        const isGlb = ext === 'glb' || ext === 'gltf' || name.toLowerCase().includes('glb');
-        
+        const lowerName = name.toLowerCase();
+        const isGlb = lowerName.endsWith('.glb') || lowerName.endsWith('.gltf') || lowerName.includes('glb');
         if (isGlb) return { emoji: '📦', label: 'GLB', isGlb: true };
         
+        const extMatch = name.match(/\.([a-z0-9]+)$/i);
+        const ext = extMatch ? extMatch[1].toLowerCase() : "";
         const map = {'pdf':'📄','txt':'📝','md':'📝','zip':'📚','mp3':'🎵','png':'🖼️','jpg':'🖼️','gif':'🖼️','webp':'🖼️'};
         return { emoji: map[ext] || '📄', label: ext.toUpperCase() || 'FILE', isGlb: false };
     }
 
-    function openModal(fileId, cardElement) {
-        currentDeleteId = fileId;
-        currentCardElement = cardElement;
+    function openModal(fileId) {
+        document.getElementById('form-del-id').value = fileId;
         document.getElementById('pass-modal').style.display = 'flex';
-        const input = document.getElementById('pass-input');
-        input.value = '';
-        input.focus();
+        document.getElementById('pass-input').value = '';
+        document.getElementById('pass-input').focus();
     }
     function closeModal() { document.getElementById('pass-modal').style.display = 'none'; }
 
-    document.getElementById('confirm-del-btn').onclick = async () => {
+    function submitDelete() {
         const pass = document.getElementById('pass-input').value;
         if (!pass) return;
-        closeModal();
-        try {
-            // 通信エラー対策：JSONP的な挙動を避けるため、fetchの設定を固定
-            const res = await fetch(`${GAS_URL}?delId=${currentDeleteId}&pass=${encodeURIComponent(pass)}`, { mode: 'no-cors' });
-            // 'no-cors'モードでは中身を読めないため、成功とみなして一旦消去し、再読み込みで確認する仕様
-            alert("削除リクエストを送信しました。");
-            currentCardElement.remove();
-        } catch (e) {
-            alert("通信に失敗しました。URLを確認してください。");
-        }
-    };
+        const form = document.getElementById('delete-form');
+        form.action = GAS_URL;
+        document.getElementById('form-pass').value = pass;
+        form.submit(); // フォーム送信で確実にGASへ飛ばす
+    }
 
     function createCard(name, url, source, color, isDrive = false, fileId = '') {
         const gallery = document.getElementById('gallery');
@@ -103,7 +97,7 @@
                 <div class="file-name" title="${esc(name)}">${esc(name)}</div>
                 <div class="btn-group">
                     <button class="btn" onclick="navigator.clipboard.writeText('${esc(copyUrl)}').then(()=>alert('コピー完了'))">コピー</button>
-                    ${isDrive ? `<button class="btn btn-del" id="btn-${fileId}">削除</button>` : ''}
+                    ${isDrive ? `<button class="btn btn-del" onclick="openModal('${fileId}')">削除</button>` : ''}
                 </div>
             </div>
         `;
@@ -112,17 +106,14 @@
         const previewArea = card.querySelector('.preview');
         const iconBox = card.querySelector('.icon-box');
 
-        if (isDrive) {
-            if (!info.isGlb) {
-                const iframe = document.createElement('iframe');
-                iframe.src = `https://drive.google.com/file/d/${fileId}/preview`;
-                iframe.onload = () => { iconBox.style.display = 'none'; };
-                previewArea.appendChild(iframe);
-            }
-            const delBtn = card.querySelector(`#btn-${fileId}`);
-            if (delBtn) delBtn.onclick = () => openModal(fileId, card);
-        } else {
-            if (['jpg','jpeg','png','gif','webp'].includes(name.split('.').pop())) {
+        if (isDrive && !info.isGlb) {
+            const iframe = document.createElement('iframe');
+            iframe.src = `https://drive.google.com/file/d/${fileId}/preview`;
+            iframe.onload = () => { iconBox.style.display = 'none'; };
+            previewArea.appendChild(iframe);
+        } else if (!isDrive) {
+            const ext = name.split('.').pop().toLowerCase();
+            if (['jpg','jpeg','png','gif','webp'].includes(ext)) {
                 const img = document.createElement('img');
                 img.src = url;
                 img.onload = () => { iconBox.style.display = 'none'; };
@@ -137,13 +128,15 @@
     }
 
     async function init() {
+        // GitHub
         fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/`)
             .then(r => r.json()).then(data => {
                 if(Array.isArray(data)) data.forEach(f => f.type==='file' && f.name!=='index.html' && createCard(f.name, f.download_url, 'GitHub', '#24292f'));
             });
-        fetch(GAS_URL).then(r => r.json()).then(data => {
+        // Drive (一覧取得用のパラメータ getFiles=true を付与)
+        fetch(`${GAS_URL}?getFiles=true`).then(r => r.json()).then(data => {
             if (Array.isArray(data)) data.forEach(f => f.id && createCard(f.name, '', 'Drive', '#34a853', true, f.id));
-        }).catch(() => console.log("初期読み込みエラー対策"));
+        });
     }
     init();
 </script>

@@ -9,14 +9,11 @@
         .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; max-width: 1400px; margin: 0 auto; }
         .card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; position: relative; border: 1px solid #e1e4e8; height: 320px; }
         .preview { width: 100%; height: 200px; background: #eaedef; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
-        .preview img, model-viewer, video, iframe { width: 100%; height: 100%; border: none; object-fit: contain; }
-        .text-preview { font-size: 10px; padding: 10px; background: #f8f9fa; color: #333; width: 100%; height: 100%; white-space: pre-wrap; margin: 0; overflow: hidden; box-sizing: border-box; text-align: left; border: none; }
-        
-        /* 絵文字アイコンのスタイル */
-        .icon-container { text-align: center; pointer-events: none; }
-        .icon-emoji { font-size: 60px; display: block; margin-bottom: 5px; }
-        .ext-badge { font-size: 12px; font-weight: bold; color: #666; background: #ddd; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; }
-        
+        .preview img, model-viewer, iframe { width: 100%; height: 100%; border: none; object-fit: contain; }
+        .text-preview { font-size: 10px; padding: 10px; background: #f8f9fa; color: #333; width: 100%; height: 100%; white-space: pre-wrap; margin: 0; overflow: hidden; box-sizing: border-box; text-align: left; }
+        .icon-box { text-align: center; }
+        .icon-emoji { font-size: 60px; display: block; }
+        .ext-label { font-size: 12px; font-weight: bold; color: #666; background: #ddd; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; }
         .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
         .file-name { font-size: 13px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #333; }
         .badge { position: absolute; top: 10px; right: 10px; padding: 4px 8px; border-radius: 6px; color: white; font-size: 10px; font-weight: bold; z-index: 10; }
@@ -31,68 +28,73 @@
     const GITHUB_REPO = "my-assets";
     const GAS_URL = "https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLg6lUNYUqDKS-la6alsT4YpBKyevS2tE06eNJoXZRnOQkelBknB60UdBeYtGEtPVj4l2kFQHZX98ee9zQVchhKya8t7YPSNylReH92jZnAjEuZbEkLPSIwSXAKNwUesELe8t4bLyO_AsBIMOuJKj1aNUcZuUkgLPX-Xo-57SF8GOWzBvHefnwpGPOmwsCCEvOn04e6st9icxR4-BRrLahxvFmkV6yQDBQrgjZYnEzJGYhDKdFSzrFEu0XIaLRha516n5_K_uflsRsp2Qk9p50jMsOsJ6sUeplTzYQzf&lib=MurWCq0JNvz56-vjWDQz3gypAWhvqL-Aw"; 
 
-    // 拡張子ごとの絵文字設定
+    // 絵文字の出し分け
     function getEmoji(ext) {
         const map = {
-            'pdf': '📄', 'txt': '📝', 'md': '📝',
-            'glb': '📦', 'gltf': '📦', 'zip': '📚', 'rar': '📚',
-            'mp3': '🎵', 'wav': '🎵', 'js': '📜', 'html': '🌐',
-            'png': '🖼️', 'jpg': '🖼️', 'jpeg': '🖼️', 'webp': '🖼️', 'gif': '🖼️'
+            'pdf': '📄', 'txt': '📝', 'md': '📝', 'glb': '📦', 'gltf': '📦',
+            'zip': '📚', 'rar': '📚', 'mp3': '🎵', 'wav': '🎵', 'js': '📜',
+            'html': '🌐', 'png': '🖼️', 'jpg': '🖼️', 'jpeg': '🖼️', 'gif': '🖼️'
         };
         return map[ext] || '📄';
     }
 
-    // アイコンHTMLを安全に生成する関数
-    function renderIcon(targetEl, ext, badgeHtml) {
-        targetEl.innerHTML = badgeHtml;
-        const wrap = document.createElement('div');
-        wrap.className = 'icon-container';
-        wrap.innerHTML = `<span class="icon-emoji">${getEmoji(ext)}</span><span class="ext-badge">${ext || 'FILE'}</span>`;
-        targetEl.appendChild(wrap);
+    // カード作成（エラーに強い構造）
+    function createCard(name, url, source, color, isDrive = false, fileId = '') {
+        try {
+            const gallery = document.getElementById('gallery');
+            const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : "";
+            const emoji = getEmoji(ext);
+            const copyUrl = isDrive ? `https://drive.google.com/uc?export=view&id=${fileId}` : url;
+
+            // 基本となるカードのHTMLを組み立て（テンプレート）
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <div class="preview" id="pre-${fileId || name}">
+                    <div class="badge" style="background:${color}">${source}</div>
+                    <div class="icon-box"><span class="icon-emoji">${emoji}</span><span class="ext-label">${ext || 'FILE'}</span></div>
+                </div>
+                <div class="card-body">
+                    <div class="file-name" title="${name}">${name}</div>
+                    <button class="btn" onclick="navigator.clipboard.writeText('${copyUrl}')">URLをコピー</button>
+                </div>
+            `;
+            gallery.appendChild(card);
+
+            // プレビュー領域への上書き（失敗してもカード自体は残る）
+            const previewArea = card.querySelector('.preview');
+            const iconHtml = previewArea.innerHTML; // 失敗時のバックアップ
+
+            if (['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext)) {
+                const img = new Image();
+                img.src = isDrive ? `https://drive.google.com/uc?export=view&id=${fileId}` : url;
+                img.onload = () => { previewArea.innerHTML = `<div class="badge" style="background:${color}">${source}</div>`; previewArea.appendChild(img); };
+            } 
+            else if (['txt', 'md', 'js', 'json'].includes(ext)) {
+                const fetchUrl = isDrive ? `https://drive.google.com/uc?export=download&id=${fileId}` : url;
+                fetch(fetchUrl).then(r => r.text()).then(t => {
+                    previewArea.innerHTML = `<div class="badge" style="background:${color}">${source}</div><pre class="text-preview">${t.substring(0, 500)}</pre>`;
+                }).catch(() => {});
+            }
+            else if (ext === 'pdf' || (isDrive && ['mp4', 'webm', 'mov'].includes(ext))) {
+                const embedUrl = isDrive ? `https://drive.google.com/file/d/${fileId}/preview` : url;
+                previewArea.innerHTML = `<div class="badge" style="background:${color}">${source}</div><iframe src="${embedUrl}"></iframe>`;
+            }
+            else if (!isDrive && ['glb', 'gltf'].includes(ext)) {
+                previewArea.innerHTML = `<div class="badge" style="background:${color}">${source}</div><model-viewer src="${url}" auto-rotate camera-controls></model-viewer>`;
+            }
+        } catch (e) { console.error("Error creating card for:", name, e); }
     }
 
-    function createCard(name, url, source, color, isDrive = false, fileId = '') {
-        const gallery = document.getElementById('gallery');
-        const card = document.createElement('div');
-        card.className = 'card';
+    // データ取得
+    async function init() {
+        // GitHub
+        fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/`)
+            .then(res => res.json())
+            .then(data => { if(Array.isArray(data)) data.forEach(f => { if(f.type === 'file' && f.name !== 'index.html') createCard(f.name, f.download_url, 'GitHub', '#24292f'); }); })
+            .catch(e => console.error("GitHub Fetch Error"));
 
-        // 拡張子を安全に取得
-        const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : "";
-        
-        const previewArea = document.createElement('div');
-        previewArea.className = 'preview';
-        const badgeHtml = `<div class="badge" style="background:${color}">${source}</div>`;
-        previewArea.innerHTML = badgeHtml;
-
-        // --- 各ファイル形式の処理 ---
-        if (['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext)) {
-            const img = document.createElement('img');
-            img.src = isDrive ? `https://drive.google.com/uc?export=view&id=${fileId}` : url;
-            // 画像が読み込めない場合はアイコンを表示
-            img.onerror = () => renderIcon(previewArea, ext, badgeHtml);
-            previewArea.appendChild(img);
-        } 
-        else if (['txt', 'md', 'js', 'json'].includes(ext)) {
-            const pre = document.createElement('pre');
-            pre.className = 'text-preview';
-            pre.textContent = 'Loading...';
-            const fetchUrl = isDrive ? `https://drive.google.com/uc?export=download&id=${fileId}` : url;
-            fetch(fetchUrl)
-                .then(r => r.ok ? r.text() : Promise.reject())
-                .then(t => { pre.textContent = t.substring(0, 500); })
-                .catch(() => renderIcon(previewArea, ext, badgeHtml));
-            previewArea.appendChild(pre);
-        }
-        else if (ext === 'pdf' || (isDrive && ['mp4', 'webm', 'mov'].includes(ext))) {
-            const iframe = document.createElement('iframe');
-            iframe.src = isDrive ? `https://drive.google.com/file/d/${fileId}/preview` : url;
-            previewArea.appendChild(iframe);
-        }
-        else if (!isDrive && ['glb', 'gltf'].includes(ext)) {
-            const mv = document.createElement('model-viewer');
-            mv.setAttribute('src', url);
-            mv.setAttribute('auto-rotate', '');
-            mv.setAttribute('camera-controls', '');
-            previewArea.appendChild(mv);
-        }
-        else {
+        // Google Drive
+        fetch(GAS_URL)
+            .then(res => res.json())
+            .then(driveData => { if(Array.isArray(driveData))

@@ -2,179 +2,107 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Asset Manager Pro</title>
-
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2245%22 fill=%22%23FF00FF%22/><circle cx=%2235%22 cy=%2240%22 r=%225%22 fill=%22black%22/><circle cx=%2265%22 cy=%2240%22 r=%225%22 fill=%22black%22/><path d=%22M30 60 Q50 80 70 60%22 stroke=%22black%22 stroke-width=%223%22 fill=%22none%22/><path d=%22M45 68 v12 a5 5 0 0 0 10 0 v-12z%22 fill=%22%23FF69B4%22/></svg>" type="image/svg+xml">    
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>😎</text></svg>">
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
     <style>
-        :root { --bg: #f0f2f5; --card: #fff; --danger: #cf222e; }
+        :root { --primary: #24292f; --accent: #0969da; --danger: #cf222e; --bg: #f6f8fa; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; }
-        .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; max-width: 1400px; margin: 0 auto; }
-        .card { background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; position: relative; border: 1px solid #e1e4e8; height: 380px; }
-        .preview { width: 100%; height: 230px; background: #eaedef; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        .preview iframe, .preview img, model-viewer { width: 100%; height: 100%; border: none; object-fit: contain; position: absolute; z-index: 1; }
-        .icon-box { text-align: center; z-index: 5; background: #eaedef; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .icon-emoji { font-size: 60px; display: block; }
-        .ext-label { font-size: 11px; font-weight: bold; color: #666; background: #dee2e6; padding: 3px 10px; border-radius: 4px; text-transform: uppercase; margin-top: 8px; }
-        .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
-        .file-name { font-size: 13px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .badge { position: absolute; top: 12px; right: 12px; padding: 4px 10px; border-radius: 20px; color: white; font-size: 10px; font-weight: bold; z-index: 20; }
-        .btn-group { display: flex; gap: 8px; margin-top: 10px; }
-        .btn { flex: 1; padding: 10px; cursor: pointer; border: 1px solid #d1d5da; background: #fafbfc; border-radius: 6px; font-size: 12px; font-weight: bold; }
-        .btn-del { border-color: var(--danger); color: var(--danger); }
-        
-        /* モーダル */
-        #pass-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
-        .modal-content { background: #fff; padding: 30px; border-radius: 12px; text-align: center; width: 280px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
-        .modal-content input { width: 100%; font-size: 32px; text-align: center; padding: 10px; margin: 15px 0; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        .container { max-width: 1200px; margin: 0 auto; display: none; }
+        .panel { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        .card { background: #fff; border: 1px solid #d0d7de; border-radius: 12px; overflow: hidden; }
+        .preview-box { height: 180px; background: #eee; }
+        model-viewer { width: 100%; height: 100%; }
+        .card-info { padding: 15px; }
+        .btn { padding: 8px; border: 1px solid #d0d7de; border-radius: 6px; cursor: pointer; width: 100%; margin-top: 5px; font-weight: bold; }
+        .btn-up { background: var(--primary); color: white; border: none; }
+        .login-screen { position: fixed; inset: 0; background: var(--primary); display: flex; justify-content: center; align-items: center; z-index: 1000; }
     </style>
 </head>
 <body>
 
-    <div id="pass-modal">
-        <div class="modal-content">
-            <h3 style="margin:0">削除確認</h3>
-            <p style="font-size:12px; color:#666">パスコードを入力（Enterで確定）</p>
-            <input type="tel" id="pass-input" pattern="\d*" inputmode="numeric" placeholder="****" autocomplete="off">
-            <div style="display:flex; gap:10px">
-                <button type="button" class="btn" onclick="closeModal()">戻る</button>
-                <button type="button" class="btn btn-del" onclick="performDelete()">削除</button>
-            </div>
-        </div>
+<div id="login" class="login-screen">
+    <div style="background:white; padding:40px; border-radius:12px; text-align:center;">
+        <h2>Asset Manager Login</h2>
+        <input type="password" id="pass-input" placeholder="Passcode" style="padding:10px; border:1px solid #ddd; width:200px;">
+        <button onclick="checkPass()" class="btn btn-up" style="margin-top:10px;">Login</button>
     </div>
+</div>
 
-    <div id="gallery" class="container"></div>
+<div class="container" id="main-content">
+    <h1>Asset Manager Pro</h1>
+    <div class="panel">
+        <h3 style="margin-top:0">GitHubへアップロード</h3>
+        <input type="file" id="gh-file">
+        <button class="btn btn-up" onclick="uploadToGithub()" id="up-btn" style="width:auto; padding:10px 30px;">実行</button>
+    </div>
+    <div id="drive-section">
+        <h3>Google Drive Asset (Temporary)</h3>
+        <div class="grid" id="drive-grid"></div>
+    </div>
+</div>
 
 <script>
-    /**
-     * 【設定】ここだけ書き換えてください
-     */
-    const GITHUB_CONFIG = { USER: "nplus-hub", REPO: "my-assets" };
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbz_4egWP_65OVharrZiA6Ujqr-YEc0e7BZSpRvesbWjdQRNEavzyW9ySp_C3sXQKw3XfA/exec"; // ★ここに最新のURLを貼り付け
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwS7UBlHaklPdrP2uXZk07JEnPaCVsBuVKZTGusAT9Y3JSZGrsx6dfwRu4y_n4gDt_5RQ/exec";
 
-    let state = { currentId: null, currentElement: null };
+async function checkPass() {
+    const pass = document.getElementById('pass-input').value;
+    const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ type: "auth", pass: pass }) });
+    const result = await res.json();
+    if (result.success) {
+        document.getElementById('login').style.display = 'none';
+        document.getElementById('main-content').style.display = 'block';
+        loadDriveAssets();
+    } else { alert("不正なパスコードです"); }
+}
 
-    // 表示用の補助関数
-    const esc = (s) => s ? s.toString().replace(/[&'`"<>]/g, (m) => ({'&':'&amp;',"'":"&#39;",'`':"&#96;",'"':"&quot;",'<':"&lt;",'>':"&gt;"}[m])) : "";
-
-    function openModal(id, el) {
-        state.currentId = id;
-        state.currentElement = el;
-        document.getElementById('pass-modal').style.display = 'flex';
-        const input = document.getElementById('pass-input');
-        input.value = '';
-        input.focus();
-    }
-    function closeModal() { document.getElementById('pass-modal').style.display = 'none'; }
-
-    // 削除処理の本体
-    function performDelete() {
-        const input = document.getElementById('pass-input');
-        const pass = input.value.replace(/[^0-9]/g, '');
-        if (!pass) return;
-
-        closeModal();
-        const img = new Image();
-        img.src = `${GAS_URL}?delId=${state.currentId}&pass=${encodeURIComponent(pass)}&t=${Date.now()}`;
-        
-        alert("削除しました。");
-        if (state.currentElement) state.currentElement.remove();
-    }
-
-    // パスコード入力欄の監視 (数字のみ + Enterキー対応)
-    const passInput = document.getElementById('pass-input');
-    passInput.addEventListener('input', (e) => {
-        e.target.value = e.target.value.replace(/[^0-9]/g, '');
-    });
-    passInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            performDelete();
-        }
-    });
-
-    // 3D/ファイル判定
-    function getFileMeta(name) {
-        const lower = name.toLowerCase();
-        const ext = name.split('.').pop().toLowerCase();
-        const is3D = lower.endsWith('.glb') || lower.endsWith('.gltf') || lower.includes('glb');
-        const emojis = {'pdf':'📄','txt':'📝','md':'📝','zip':'📚','mp3':'🎵','png':'🖼️','jpg':'🖼️','gif':'🖼️','webp':'🖼️'};
-        return { is3D, emoji: is3D ? '📦' : (emojis[ext] || '📄'), label: is3D ? 'GLB' : ext.toUpperCase() || 'FILE' };
-    }
-
-    // カード生成
-    function createCard(name, url, source, color, isDrive = false, fileId = '') {
-        const meta = getFileMeta(name);
-        const link = isDrive ? `https://drive.google.com/uc?export=view&id=${fileId}` : url;
+async function loadDriveAssets() {
+    const grid = document.getElementById('drive-grid');
+    grid.innerHTML = "読み込み中...";
+    const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ type: "list_drive" }) });
+    const files = await res.json();
+    
+    grid.innerHTML = "";
+    files.forEach(file => {
         const card = document.createElement('div');
         card.className = 'card';
         card.innerHTML = `
-            <div class="preview">
-                <div class="badge" style="background:${color}">${esc(source)}</div>
-                <div class="icon-box">
-                    <span class="icon-emoji">${meta.emoji}</span>
-                    <span class="ext-label">${esc(meta.label)}</span>
-                </div>
-            </div>
-            <div class="card-body">
-                <div class="file-name" title="${esc(name)}">${esc(name)}</div>
-                <div class="btn-group">
-                    <button class="btn" onclick="copyLink('${esc(link)}')">コピー</button>
-                    ${isDrive ? `<button class="btn btn-del" id="delBtn-${fileId}">削除</button>` : ''}
-                </div>
+            <div class="preview-box">Driveプレビュー不可</div>
+            <div class="card-info">
+                <strong>${file.name}</strong>
+                <button class="btn btn-danger" onclick="deleteFile('${file.id}')" style="color:red">削除</button>
             </div>
         `;
-        document.getElementById('gallery').appendChild(card);
+        grid.appendChild(card);
+    });
+}
 
-        // プレビュー表示
-        const previewArea = card.querySelector('.preview');
-        const iconBox = card.querySelector('.icon-box');
-        if (isDrive) {
-            if (!meta.is3D) {
-                const ifr = document.createElement('iframe');
-                ifr.src = `https://drive.google.com/file/d/${fileId}/preview`;
-                ifr.onload = () => iconBox.style.display = 'none';
-                previewArea.appendChild(ifr);
-            }
-            card.querySelector(`#delBtn-${fileId}`).onclick = () => openModal(fileId, card);
-        } else {
-            const ext = meta.label.toLowerCase();
-            if (['jpg','jpeg','png','gif','webp'].includes(ext)) {
-                const img = document.createElement('img');
-                img.src = url;
-                img.onload = () => iconBox.style.display = 'none';
-                previewArea.appendChild(img);
-            } else if (meta.is3D) {
-                const mv = document.createElement('model-viewer');
-                mv.src = url; mv.setAttribute('auto-rotate', ''); mv.setAttribute('camera-controls', '');
-                mv.onload = () => iconBox.style.display = 'none';
-                previewArea.appendChild(mv);
-            }
-        }
-    }
+async function uploadToGithub() {
+    const fileEl = document.getElementById('gh-file');
+    if (fileEl.files.length === 0) return alert("ファイルを選択してください");
+    const file = fileEl.files[0];
+    const btn = document.getElementById('up-btn');
+    btn.innerText = "アップロード中..."; btn.disabled = true;
 
-    window.copyLink = (text) => {
-        navigator.clipboard.writeText(text).then(() => alert('コピー完了'));
+    const reader = new FileReader();
+    reader.onload = async () => {
+        const base64 = reader.result.split(',')[1];
+        const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ type: "github_upload", filename: file.name, base64: base64 }) });
+        const result = await res.json();
+        if (result.content) { alert("GitHubへ保存成功！"); location.reload(); }
+        else { alert("失敗: " + result.message); }
+        btn.innerText = "実行"; btn.disabled = false;
     };
+    reader.readAsDataURL(file);
+}
 
-    // 初期読み込み
-    (function init() {
-        // GitHub
-        fetch(`https://api.github.com/repos/${GITHUB_CONFIG.USER}/${GITHUB_CONFIG.REPO}/contents/`)
-            .then(res => res.json())
-            .then(data => {
-                if(Array.isArray(data)) data.forEach(f => f.type==='file' && f.name!=='index.html' && createCard(f.name, f.download_url, 'GitHub', '#24292f'));
-            }).catch(e => console.error(e));
-        
-        // Drive (GAS)
-        if (!GAS_URL.includes("あなたのGAS")) {
-            fetch(`${GAS_URL}?getFiles=true`)
-                .then(res => res.json())
-                .then(data => {
-                    if(Array.isArray(data)) data.forEach(f => f.id && createCard(f.name, '', 'Drive', '#34a853', true, f.id));
-                }).catch(e => console.error(e));
-        }
-    })();
+async function deleteFile(id) {
+    if(!confirm("Driveから削除しますか？")) return;
+    const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ type: "delete", id: id }) });
+    const result = await res.json();
+    if(result.status === "success") { alert("削除しました"); loadDriveAssets(); }
+}
 </script>
 </body>
 </html>

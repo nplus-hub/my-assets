@@ -2,21 +2,18 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Multi-Asset Manager</title>
+    <title>Asset Manager Pro</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
     <style>
         body { font-family: sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
-        .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; max-width: 1400px; margin: 0 auto; }
-        .card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08); display: flex; flex-direction: column; border: 1px solid #e1e4e8; position: relative; }
-        .preview { width: 100%; height: 200px; background: #eaedef; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
-        .preview img, model-viewer, video { width: 100%; height: 100%; object-fit: contain; }
-        audio { width: 90%; }
-        .text-preview { font-size: 10px; padding: 10px; background: #1e1e1e; color: #dcdcdc; width: 100%; height: 100%; white-space: pre-wrap; margin: 0; box-sizing: border-box; }
-        .card-body { padding: 15px; border-top: 1px solid #eee; }
-        .file-name { font-size: 13px; font-weight: bold; margin-bottom: 10px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
+        .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; max-width: 1400px; margin: 0 auto; }
+        .card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08); display: flex; flex-direction: column; position: relative; border: 1px solid #e1e4e8; }
+        .preview { width: 100%; height: 220px; background: #eee; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid #eee; }
+        .preview img, model-viewer, video, iframe { width: 100%; height: 100%; border: none; object-fit: contain; }
+        .card-body { padding: 15px; }
+        .file-name { font-size: 13px; font-weight: bold; margin-bottom: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .badge { position: absolute; top: 10px; right: 10px; padding: 4px 8px; border-radius: 6px; color: white; font-size: 10px; font-weight: bold; z-index: 5; }
-        .btn { width: 100%; padding: 8px; cursor: pointer; border: 1px solid #d1d5da; background: #fafbfc; border-radius: 6px; font-size: 12px; font-weight: bold; }
-        .btn:hover { background: #f3f4f6; }
+        .btn { width: 100%; padding: 8px; cursor: pointer; border: 1px solid #d1d5da; background: #fafbfc; border-radius: 6px; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -28,7 +25,7 @@
     const GITHUB_REPO = "my-assets";
     const GAS_URL = "https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLirzflKB7JWeS9hDCvMQS-UecYkN2lZGeAs0oZIgDa-0_K0Y0fQg3usuDkq3tfyNsAgz9wv5-hW5FC4yQ7u3gDbmGhkZt559oPWQS9sMhaGVCt5RAzTmMDMs8E7IW6P5xw_tfbHXdr-PJESGxawBje5FttiVZw0Bg5ZxwQja7lRLbNHV3dWjqhcJRpxO2jU57t_AsWsc-ETGpxiS9GV2zRtv3Wt9lyz27TiXGSs3Ogj54aCSgFwQ9a03-2m97A9P6LuRvKL--1Uu40_1ARqb84h3SdDabsbUl1VHDp1&lib=MurWCq0JNvz56-vjWDQz3gypAWhvqL-Aw"; 
 
-    function createCard(name, url, source, color) {
+    function createCard(name, url, source, color, isDrive = false, fileId = '') {
         const gallery = document.getElementById('gallery');
         const card = document.createElement('div');
         card.className = 'card';
@@ -36,25 +33,24 @@
         
         let mediaHtml = '';
 
-        // 形式別の判定
-        if (['glb', 'gltf'].includes(ext)) {
-            mediaHtml = `<model-viewer src="${url}" auto-rotate camera-controls shadow-intensity="1"></model-viewer>`;
-        } else if (['mp3', 'wav', 'ogg', 'm4a'].includes(ext)) {
-            mediaHtml = `<audio controls src="${url}"></audio>`;
-        } else if (['mp4', 'webm', 'ogv'].includes(ext)) {
-            mediaHtml = `<video controls muted src="${url}"></video>`;
-        } else if (['txt', 'js', 'json', 'html', 'css', 'md', 'py', 'sh'].includes(ext)) {
-            const textId = 'txt-' + Math.random().toString(36).substr(2, 9);
-            mediaHtml = `<pre class="text-preview" id="${textId}">Loading...</pre>`;
-            fetch(url).then(r => r.text()).then(t => {
-                const el = document.getElementById(textId);
-                if (el) el.innerText = t.substring(0, 600);
-            }).catch(() => { if(document.getElementById(textId)) document.getElementById(textId).innerText = "Preview Error"; });
-        } else if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext)) {
-            mediaHtml = `<img src="${url}" loading="lazy" onerror="this.src='https://placehold.jp/24/cccccc/ffffff/200x150.png?text=Image%20Error'">`;
+        if (isDrive) {
+            // Googleドライブのファイルは、PDFも含め公式プレビュー画面を埋め込む
+            mediaHtml = `<iframe src="https://drive.google.com/file/d/${fileId}/preview"></iframe>`;
         } else {
-            // その他不明な形式
-            mediaHtml = `<div style="font-size:40px;">📄</div><div style="font-size:10px;color:#666;">.${ext}</div>`;
+            // GitHub側のプレビュー判定
+            if (['glb', 'gltf'].includes(ext)) {
+                mediaHtml = `<model-viewer src="${url}" auto-rotate camera-controls></model-viewer>`;
+            } else if (['mp3', 'wav', 'm4a'].includes(ext)) {
+                mediaHtml = `<audio controls src="${url}" style="width:90%"></audio>`;
+            } else if (['mp4', 'webm'].includes(ext)) {
+                mediaHtml = `<video controls muted src="${url}"></video>`;
+            } else if (['pdf'].includes(ext)) {
+                mediaHtml = `<iframe src="${url}"></iframe>`;
+            } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+                mediaHtml = `<img src="${url}" loading="lazy">`;
+            } else {
+                mediaHtml = `<div style="padding:20px;text-align:center;">📄<br><small>${name}</small></div>`;
+            }
         }
 
         card.innerHTML = `
@@ -64,17 +60,9 @@
             </div>
             <div class="card-body">
                 <div class="file-name" title="${name}">${name}</div>
-                <button class="btn" onclick="copyToClipboard('${url}', this)">URLをコピー</button>
+                <button class="btn" onclick="navigator.clipboard.writeText('${url}')">URLをコピー</button>
             </div>`;
         gallery.appendChild(card);
-    }
-
-    function copyToClipboard(text, btn) {
-        navigator.clipboard.writeText(text).then(() => {
-            const originalText = btn.innerText;
-            btn.innerText = "コピー完了！";
-            setTimeout(() => btn.innerText = originalText, 1500);
-        });
     }
 
     async function init() {
@@ -89,24 +77,22 @@
                         }
                     });
                 }
-            }).catch(e => console.error(e));
+            });
 
-        // Drive (GAS)
+        // Drive
         fetch(GAS_URL)
             .then(res => res.json())
             .then(driveData => {
                 if(Array.isArray(driveData)) {
                     driveData.forEach(f => {
                         if(!f.error) {
-                            // 画像以外もGoogleドライブのプレビュー機能を活用
-                            const url = f.thumbnail || `https://drive.google.com/uc?export=view&id=${f.id}`;
-                            createCard(f.name, url, 'Drive', '#34a853');
+                            const driveUrl = `https://drive.google.com/uc?export=view&id=${f.id}`;
+                            createCard(f.name, driveUrl, 'Drive', '#34a853', true, f.id);
                         }
                     });
                 }
-            }).catch(e => console.error(e));
+            });
     }
-
     init();
 </script>
 </body>

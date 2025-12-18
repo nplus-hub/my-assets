@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Asset Manager Pro - Official Stable</title>
+    <title>Asset Manager Pro - Secure Edition</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
     <style>
         body { font-family: -apple-system, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
@@ -11,7 +11,7 @@
         .preview { width: 100%; height: 230px; background: #eaedef; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
         .preview iframe, .preview img, model-viewer { width: 100%; height: 100%; border: none; object-fit: contain; }
         .text-preview { font-size: 10px; padding: 12px; background: #f8f9fa; color: #333; width: 100%; height: 100%; white-space: pre-wrap; margin: 0; overflow: hidden; box-sizing: border-box; text-align: left; }
-        .icon-box { text-align: center; }
+        .icon-box { text-align: center; z-index: 1; }
         .icon-emoji { font-size: 60px; display: block; margin-bottom: 8px; }
         .ext-label { font-size: 11px; font-weight: bold; color: #666; background: #dee2e6; padding: 3px 10px; border-radius: 4px; text-transform: uppercase; }
         .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
@@ -21,38 +21,41 @@
         .btn { flex: 1; padding: 10px; cursor: pointer; border: 1px solid #d1d5da; background: #fafbfc; border-radius: 6px; font-size: 12px; font-weight: bold; }
         .btn-del { border-color: #cf222e; color: #cf222e; }
         .btn-del:hover { background: #ffeef0; }
-        .error-msg { color: #cf222e; padding: 20px; background: #fff; border-radius: 8px; border: 1px solid #cf222e; margin-bottom: 20px; display: none; }
     </style>
 </head>
 <body>
-    <div id="error-display" class="error-msg"></div>
     <div id="gallery" class="container"></div>
 
 <script>
     const GITHUB_USER = "nplus-hub";
     const GITHUB_REPO = "my-assets";
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbyzyvKJy7VRcKziRVPaY6tQn7pt87yknrIAfMG_8j0SeW04iNLREpuTiz7KheB4_hKxDw/exec"; // ★新しくデプロイしたURLを貼ってください
+    const GAS_URL = "https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLi3jjRv6KCAWdbXUlAALIil7GTDm5F7u80unENJJGqprkOfr1rtN5IwkkLzC3U401gWiFL5ns2Bmt74V2V2f4U72PwEwD0nRhQ2nc7mkNZn3C-4WxTUl3xK5lnR12DWcta4kYRJVmrSG2zJl6YEAa1aAMrCMIXsTL8NK4npNkmPnUPiCl5ZlUcbynvYDl3pDoYuY1Qxje3FhMRh-qS8D6NeSEuC8sKOcn1CPJQoUS5Pjv0tgsEHFh7h21I7M0fa_KbEcLwStfRQzOjeohZWHyi1LVFx6ye5FD0_1Wj8&lib=MurWCq0JNvz56-vjWDQz3gypAWhvqL-Aw"; 
 
     const esc = (str) => str ? str.toString().replace(/[&'`"<>]/g, (m) => ({'&':'&amp;',"'":"&#39;",'`':"&#96;",'"':"&quot;",'<':"&lt;",'>':"&gt;"}[m])) : "";
 
     function getEmoji(ext) {
-        const map = {'pdf':'📄','txt':'📝','md':'📝','glb':'📦','gltf':'📦','zip':'📚','mp3':'🎵','png':'🖼️','jpg':'🖼️','gif':'🖼️','webp':'🖼️'};
+        const map = {'pdf':'📄','txt':'📝','md':'📝','glb':'📦','gltf':'📦','zip':'📚','mp3':'🎵','png':'🖼️','jpg':'🖼️','gif':'🖼️','webp':'🖼️','js':'📜','css':'🎨'};
         return map[ext] || '📄';
     }
 
     async function deleteFile(fileId, cardElement) {
-        if (!confirm("Googleドライブのゴミ箱へ移動しますか？")) return;
+        // 暗証番号の入力を求める
+        const pass = prompt("削除するには4桁の暗証番号を入力してください：");
+        if (!pass) return; // キャンセルされた場合
+
         try {
-            const response = await fetch(`${GAS_URL}?delId=${fileId}`);
+            // URLに pass パラメータを追加して送信
+            const response = await fetch(`${GAS_URL}?delId=${fileId}&pass=${pass}`);
             const result = await response.json();
+            
             if (result.status === "success") {
                 alert("ゴミ箱へ移動しました。");
                 cardElement.remove();
             } else {
-                alert("削除エラー: " + result.message);
+                alert("エラー: " + result.message);
             }
         } catch (e) {
-            alert("通信エラー。GASのURLとデプロイ設定（全員）を確認してください。");
+            alert("通信エラーが発生しました。");
         }
     }
 
@@ -87,10 +90,14 @@
         const badgeHtml = `<div class="badge" style="background:${color}">${esc(source)}</div>`;
 
         if (isDrive) {
-            previewArea.innerHTML = badgeHtml + `<iframe src="https://drive.google.com/file/d/${fileId}/preview"></iframe>`;
+            // 3D以外ならプレビューを表示
+            if (!['glb', 'gltf'].includes(ext)) {
+                previewArea.innerHTML = badgeHtml + `<iframe src="https://drive.google.com/file/d/${fileId}/preview"></iframe>`;
+            }
             const delBtn = card.querySelector(`#btn-${fileId}`);
             if (delBtn) delBtn.onclick = () => deleteFile(fileId, card);
         } else {
+            // GitHub用
             if (['jpg','jpeg','png','gif','webp'].includes(ext)) {
                 previewArea.innerHTML = badgeHtml + `<img src="${url}" loading="lazy">`;
             } else if (['txt','md','js','json','css'].includes(ext)) {
@@ -104,23 +111,14 @@
     }
 
     async function init() {
-        // GitHub取得
+        // GitHub
         fetch(`https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/`)
             .then(r => r.json()).then(data => {
                 if(Array.isArray(data)) data.forEach(f => f.type==='file' && f.name!=='index.html' && createCard(f.name, f.download_url, 'GitHub', '#24292f'));
-            }).catch(e => console.error("GitHub Error:", e));
-
-        // Drive取得
+            });
+        // Drive
         fetch(GAS_URL).then(r => r.json()).then(data => {
-            if (Array.isArray(data)) {
-                data.forEach(f => f.id && createCard(f.name, '', 'Drive', '#34a853', true, f.id));
-            } else if (data.status === "error") {
-                const errDiv = document.getElementById('error-display');
-                errDiv.style.display = 'block';
-                errDiv.innerText = "Drive取得エラー: " + data.message;
-            }
-        }).catch(e => {
-            console.error("Drive Fetch Error:", e);
+            if (Array.isArray(data)) data.forEach(f => f.id && createCard(f.name, '', 'Drive', '#34a853', true, f.id));
         });
     }
     init();

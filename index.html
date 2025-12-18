@@ -18,21 +18,16 @@
         .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; max-width: 1400px; margin: 32px auto; padding: 0 20px; }
         
         .card { background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; position: relative; border: 1px solid var(--border); height: 400px; transition: 0.2s; }
-        .card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
         
-        /* プレビューエリア：以前の安定した重ね合わせ設定 */
         .preview { width: 100%; height: 240px; background: #eaedef; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; border-bottom: 1px solid var(--border); }
         
-        /* 3Dモデル表示：透明背景と最前面配置 */
-        model-viewer { width: 100%; height: 100%; background-color: transparent; --poster-color: transparent; position: absolute; top: 0; left: 0; z-index: 5; }
+        /* プレビュー要素の基本設定 */
+        model-viewer, .preview img, .preview iframe { width: 100%; height: 100%; border: none; object-fit: contain; position: absolute; top: 0; left: 0; z-index: 5; background: #eaedef; }
         
-        /* 画像・iframe */
-        .preview img, .preview iframe { width: 100%; height: 100%; border: none; object-fit: contain; position: absolute; top: 0; left: 0; z-index: 4; background: #eaedef; }
-        
-        /* 代替アイコン（背面：z-index 1） */
-        .fallback-box { text-align: center; z-index: 1; display: flex; flex-direction: column; align-items: center; transition: opacity 0.3s; }
-        .fallback-emoji { font-size: 50px; display: block; margin-bottom: 5px; }
-        .fallback-ext { font-size: 11px; font-weight: bold; color: #666; background: #dee2e6; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; }
+        /* 代替アイコン表示（背面に配置） */
+        .fallback-box { text-align: center; z-index: 1; display: flex; flex-direction: column; align-items: center; }
+        .fallback-emoji { font-size: 40px; display: block; margin-bottom: 5px; }
+        .fallback-ext { font-size: 10px; font-weight: bold; color: #888; background: #ddd; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
 
         .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
         .file-name { font-size: 13px; font-weight: bold; word-break: break-all; min-height: 2.6em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -59,7 +54,7 @@
         <input type="tel" id="pass-input" placeholder="****" maxlength="4">
         <div style="display:flex; gap:10px; margin-top:10px">
             <button class="btn" onclick="closeModal()">戻る</button>
-            <button class="btn btn-del" onclick="performDelete()">削除実行</button>
+            <button class="btn btn-del" onclick="performDelete()">削除</button>
         </div>
     </div>
 </div>
@@ -79,19 +74,20 @@
 <script>
     const CONFIG = {
         GITHUB: { USER: "nplus-hub", REPO: "my-assets" },
-        GAS_URL: "https://script.google.com/macros/s/AKfycbwj3FMvL4xcSTzKUsYWKrrnWO1ZCzrE_veNxORuq55hQeiJHtPHq8s2oKsJrasjPyqGxw/exec" // ★書き換え忘れにご注意ください
+        GAS_URL: "https://script.google.com/macros/s/AKfycbwj3FMvL4xcSTzKUsYWKrrnWO1ZCzrE_veNxORuq55hQeiJHtPHq8s2oKsJrasjPyqGxw/exec" // ★ここを正しく埋めてください
     };
 
     let state = { currentId: null };
 
-    // 削除・アップロード機能
-    function openModal(id) { state.currentId = id; document.getElementById('pass-modal').style.display = 'flex'; document.getElementById('pass-input').focus(); }
+    // --- 各種機能 ---
     function closeModal() { document.getElementById('pass-modal').style.display = 'none'; }
+    function openModal(id) { state.currentId = id; document.getElementById('pass-modal').style.display = 'flex'; }
+
     function performDelete() {
         const pass = document.getElementById('pass-input').value;
         const img = new Image();
         img.src = `${CONFIG.GAS_URL}?delId=${state.currentId}&pass=${encodeURIComponent(pass)}&t=${Date.now()}`;
-        alert("リクエストを送信しました。");
+        alert("リクエスト送信完了");
         closeModal();
         setTimeout(() => location.reload(), 1500);
     }
@@ -109,20 +105,20 @@
                     body: JSON.stringify({ type: "upload", filename: file.name, contentType: file.type, data: base64Data })
                 });
                 const result = await res.json();
-                if (result.status === "success") { alert("保存完了"); location.reload(); }
+                if (result.status === "success") { alert("完了"); location.reload(); }
                 else { alert("エラー: " + result.message); }
-            } catch (err) { alert("失敗しました"); }
+            } catch (err) { alert("失敗"); }
             btn.innerText = "Driveへ保存"; btn.disabled = false;
         };
         reader.readAsDataURL(file);
     }
 
-    // --- 以前上手く機能していた3Dプレビューロジックを再適用 ---
+    // --- 表示ロジック（エラーの原因を排除したシンプル版） ---
     function createCard(name, url, source, color, isDrive = false, fileId = '') {
         const lower = name.toLowerCase();
         const ext = name.split('.').pop().toUpperCase();
         
-        // Driveの3Dモデルはuc?idの形式が最も安定します
+        // DriveのURL最適化（以前成功していた形式）
         let displayUrl = isDrive ? `https://docs.google.com/uc?export=download&id=${fileId}` : url;
         
         let emoji = '📄';
@@ -140,7 +136,7 @@
                 </div>
             </div>
             <div class="card-body">
-                <div class="file-name" title="${name}">${name}</div>
+                <div class="file-name">${name}</div>
                 <div class="btn-group">
                     <button class="btn" onclick="navigator.clipboard.writeText('${isDrive ? 'https://drive.google.com/uc?export=view&id='+fileId : url}').then(()=>alert('コピー完了'))">コピー</button>
                     ${isDrive ? `<button class="btn btn-del" onclick="openModal('${fileId}')">削除</button>` : ''}
@@ -149,28 +145,16 @@
         document.getElementById('gallery').appendChild(card);
 
         const previewArea = card.querySelector('.preview');
-        const fallback = card.querySelector('.fallback-box');
 
+        // 各プレビュー要素の生成（JavaScriptの停止を防ぐため個別にtry-catch的な安全策）
         if (lower.endsWith('.glb')) {
             const mv = document.createElement('model-viewer');
             mv.src = displayUrl;
             mv.setAttribute('auto-rotate', '');
             mv.setAttribute('camera-controls', '');
-            mv.setAttribute('ar', '');
-            mv.setAttribute('loading', 'lazy');
             mv.setAttribute('crossorigin', 'anonymous');
-            
-            // モデル読み込み完了時にアイコンを隠す
-            mv.addEventListener('load', () => {
-                fallback.style.opacity = "0";
-            });
-            // エラー時はモデルビューアーを消してアイコンを確実に見せる
-            mv.addEventListener('error', () => {
-                mv.remove();
-                fallback.style.opacity = "1";
-            });
+            mv.onerror = () => mv.remove();
             previewArea.appendChild(mv);
-
         } else if (isDrive) {
             const ifr = document.createElement('iframe');
             ifr.src = `https://drive.google.com/file/d/${fileId}/preview`;
@@ -183,21 +167,20 @@
         }
     }
 
+    // --- 初期化 ---
     (function init() {
         // GitHub
         fetch(`https://api.github.com/repos/${CONFIG.GITHUB.USER}/${CONFIG.GITHUB.REPO}/contents/`)
             .then(r => r.json()).then(data => {
                 if(Array.isArray(data)) data.forEach(f => f.type==='file' && f.name!=='index.html' && createCard(f.name, f.download_url, 'GitHub', '#24292f'));
-            });
+            }).catch(e => console.log("GitHub Load Error"));
         // Drive
-        if (CONFIG.GAS_URL.startsWith("http")) {
+        if (CONFIG.GAS_URL && CONFIG.GAS_URL.startsWith("http")) {
             fetch(`${CONFIG.GAS_URL}?getFiles=true`).then(r => r.json()).then(data => {
                 if(Array.isArray(data)) data.forEach(f => createCard(f.name, '', 'Drive', '#34a853', true, f.id));
-            });
+            }).catch(e => console.log("Drive Load Error"));
         }
     })();
-
-    document.getElementById('pass-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') performDelete(); });
 </script>
 </body>
 </html>

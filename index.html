@@ -3,102 +3,117 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Asset Library</title>
+    <title>Asset Manager</title>
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
     <style>
-        :root { --bg: #f0f2f5; --card: #ffffff; --primary: #0d6efd; --admin: #dc3545; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 20px; }
-        .header { text-align: center; margin-bottom: 30px; }
+        :root { --bg: #f4f7f6; --card: #ffffff; --primary: #007bff; --admin: #24292f; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #24292f; }
+        .header { max-width: 1200px; margin: 0 auto 30px; display: flex; justify-content: space-between; align-items: center; }
         
-        /* 管理者用アップロードエリア */
-        .admin-panel { 
-            max-width: 600px; margin: 0 auto 40px; background: #fff; padding: 20px; 
-            border: 2px dashed #ccc; border-radius: 12px; text-align: center;
+        /* 管理者用アップロードボタン */
+        .admin-btn { 
+            background: var(--admin); color: white; text-decoration: none; padding: 10px 20px; 
+            border-radius: 6px; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px;
         }
-        .upload-link { 
-            display: inline-block; padding: 12px 24px; background: var(--admin); 
-            color: white; text-decoration: none; border-radius: 8px; font-weight: bold;
-            transition: transform 0.2s;
-        }
-        .upload-link:hover { transform: scale(1.05); background: #c82333; }
+        .admin-btn:hover { background: #000; }
 
         .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
-        .card { background: var(--card); border-radius: 10px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
-        .preview { width: 100%; height: 180px; background: #333; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        .preview img, .preview video, .preview model-viewer { width: 100%; height: 100%; object-fit: contain; }
         
-        .card-content { padding: 15px; }
-        .title { font-weight: bold; margin-bottom: 12px; font-size: 1rem; color: #333; }
-        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .btn { padding: 10px; border-radius: 6px; text-decoration: none; text-align: center; font-size: 0.8rem; cursor: pointer; border: none; font-weight: bold; }
-        .btn-dl { background: var(--primary); color: white; }
-        .btn-copy { background: #6c757d; color: white; }
-        .copied { background: #198754 !important; }
+        /* カードデザイン */
+        .card { background: var(--card); border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.12); border: 1px solid #d0d7de; }
+        .preview-area { width: 100%; height: 180px; background: #f6f8fa; border-bottom: 1px solid #d0d7de; display: flex; align-items: center; justify-content: center; position: relative; }
+        .preview-area img, .preview-area video, .preview-area model-viewer { width: 100%; height: 100%; object-fit: contain; }
+        
+        .card-body { padding: 16px; }
+        .file-name { font-weight: 600; font-size: 14px; margin-bottom: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        /* 操作ボタン */
+        .actions { display: flex; gap: 8px; }
+        .btn { flex: 1; padding: 6px 12px; font-size: 12px; font-weight: 500; border-radius: 6px; cursor: pointer; border: 1px solid #d0d7de; text-align: center; text-decoration: none; color: #24292f; background: #f6f8fa; }
+        .btn:hover { background: #f3f4f6; }
+        .btn-primary { background: var(--primary); color: white; border: none; }
+        .btn-primary:hover { background: #0069d9; }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <h1>NPLUS Asset Manager</h1>
-</div>
-
-<div class="admin-panel">
-    <p style="margin-top:0; color:#666;">管理者メニュー</p>
-    <a href="https://github.com/nplus-assets/my-assets/upload/main/assets" target="_blank" class="upload-link">
-        ファイルをアップロード (GitHubを開く)
+    <h1 style="font-size: 24px;">Asset Library</h1>
+    <a href="https://github.com/nplus-assets/my-assets/tree/main/assets" target="_blank" class="admin-btn">
+        <span>＋</span> 素材を管理/追加
     </a>
-    <p style="font-size: 0.8rem; color: #888; margin-bottom:0;">※アップロード後、index.htmlのリストに追加すると画面に反映されます</p>
 </div>
 
-<div class="container" id="asset-container"></div>
+<div class="container" id="gallery">
+    </div>
 
 <script>
-    // 【素材リスト】新しいファイルを追加したらここに追記してください
-    const assets = [
-        { name: "サンプル画像", file: "image.png", type: "image" },
-        { name: "サンプル動画", file: "video.mp4", type: "video" },
-        { name: "サンプル音楽", file: "music.mp3", type: "audio" },
-        { name: "サンプル3D", file: "model.glb", type: "3d" }
+    /**
+     * 【重要】素材を追加したら、下のリストに情報を書き加えてください。
+     * name: 画面に表示する名前
+     * file: 実際のファイル名（assetsフォルダ内のもの）
+     * type: 'image', 'video', 'audio', '3d' のいずれか
+     */
+    const myAssets = [
+        { name: "サンプル画像", file: "sample.png", type: "image" },
+        { name: "デモ動画", file: "demo.mp4", type: "video" },
+        { name: "BGM", file: "music.mp3", type: "audio" },
+        { name: "3Dモデル", file: "model.glb", type: "3d" }
     ];
 
-    // パス設定（リポジトリ名 my-assets に対応）
-    const baseURL = "https://nplus-assets.github.io/my-assets/assets/";
+    // ファイルが保存されている場所のURL
+    const folderPath = "https://nplus-assets.github.io/my-assets/assets/";
 
-    const container = document.getElementById('asset-container');
-    assets.forEach(asset => {
-        const fullURL = baseURL + asset.file;
+    const gallery = document.getElementById('gallery');
+
+    myAssets.forEach(item => {
+        const url = folderPath + item.file;
         const card = document.createElement('div');
         card.className = 'card';
 
-        let previewHTML = '';
-        if(asset.type === 'image') previewHTML = `<img src="${fullURL}">`;
-        else if(asset.type === 'video') previewHTML = `<video src="${fullURL}" controls muted></video>`;
-        else if(asset.type === 'audio') previewHTML = `<div style="font-size:3rem;">🎵</div><audio src="${fullURL}" controls style="position:absolute; bottom:0; width:100%; height:30px;"></audio>`;
-        else if(asset.type === '3d') previewHTML = `<model-viewer src="${fullURL}" auto-rotate camera-controls shadow-intensity="1"></model-viewer>`;
+        let preview = '';
+        if(item.type === 'image') preview = `<img src="${url}" loading="lazy">`;
+        else if(item.type === 'video') preview = `<video src="${url}" controls muted></video>`;
+        else if(item.type === 'audio') preview = `<div style="font-size:40px;">🎵</div><audio src="${url}" controls style="position:absolute; bottom:5px; width:90%; height:30px;"></audio>`;
+        else if(item.type === '3d') preview = `<model-viewer src="${url}" auto-rotate camera-controls></model-viewer>`;
 
         card.innerHTML = `
-            <div class="preview" style="position:relative;">${previewHTML}</div>
-            <div class="card-content">
-                <div class="title">${asset.name}</div>
-                <div class="btn-group">
-                    <a href="${fullURL}" download class="btn btn-dl">保存</a>
-                    <button onclick="copyURL('${fullURL}', this)" class="btn btn-copy">URLコピー</button>
+            <div class="preview-area">${preview}</div>
+            <div class="card-body">
+                <div class="file-name" title="${item.name}">${item.name}</div>
+                <div class="actions">
+                    <a href="${url}" download class="btn btn-primary">ダウンロード</a>
+                    <button class="btn" onclick="copyToClipboard('${url}', this)">URLコピー</button>
                 </div>
             </div>
         `;
-        container.appendChild(card);
+        gallery.appendChild(card);
     });
 
-    function copyURL(url, btn) {
-        navigator.clipboard.writeText(url).then(() => {
-            const oldText = btn.innerText;
-            btn.innerText = "Copied!";
-            btn.classList.add('copied');
-            setTimeout(() => {
-                btn.innerText = oldText;
-                btn.classList.remove('copied');
-            }, 1500);
-        });
+    // コピー機能の正確な実装
+    function copyToClipboard(text, btn) {
+        if (!navigator.clipboard) {
+            // 旧ブラウザ対応用
+            const el = document.createElement('textarea');
+            el.value = text;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            showFeedback(btn);
+            return;
+        }
+        navigator.clipboard.writeText(text).then(() => showFeedback(btn));
+    }
+
+    function showFeedback(btn) {
+        const originalText = btn.innerText;
+        btn.innerText = "コピー完了";
+        btn.style.backgroundColor = "#e6ffec";
+        setTimeout(() => {
+            btn.innerText = originalText;
+            btn.style.backgroundColor = "";
+        }, 1500);
     }
 </script>
 

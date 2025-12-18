@@ -2,107 +2,309 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Asset Manager Pro</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>😎</text></svg>">
+    
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
+    
     <style>
-        :root { --primary: #24292f; --accent: #0969da; --danger: #cf222e; --bg: #f6f8fa; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; }
-        .container { max-width: 1200px; margin: 0 auto; display: none; }
-        .panel { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
-        .card { background: #fff; border: 1px solid #d0d7de; border-radius: 12px; overflow: hidden; }
-        .preview-box { height: 180px; background: #eee; }
-        model-viewer { width: 100%; height: 100%; }
-        .card-info { padding: 15px; }
-        .btn { padding: 8px; border: 1px solid #d0d7de; border-radius: 6px; cursor: pointer; width: 100%; margin-top: 5px; font-weight: bold; }
-        .btn-up { background: var(--primary); color: white; border: none; }
-        .login-screen { position: fixed; inset: 0; background: var(--primary); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        :root {
+            --primary: #24292f;
+            --accent: #0969da;
+            --danger: #cf222e;
+            --bg: #f6f8fa;
+            --border: #d0d7de;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg);
+            color: #1f2328;
+        }
+
+        /* ヘッダーデザインの維持 */
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 32px;
+            display: none; /* ログインまで非表示 */
+        }
+
+        /* アップロードセクション */
+        .upload-section {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 32px;
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        /* グリッドとカードデザインの維持 */
+        .asset-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+        }
+
+        .asset-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .asset-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(140,149,159,0.2);
+        }
+
+        .preview-container {
+            width: 100%;
+            height: 240px;
+            background-color: #eee;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .asset-info {
+            padding: 16px;
+        }
+
+        .asset-name {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 12px;
+            word-break: break-all;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 8px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: white;
+            transition: 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            border: none;
+        }
+
+        .btn-primary:hover { opacity: 0.9; }
+
+        .btn-danger {
+            color: var(--danger);
+        }
+
+        .btn-danger:hover {
+            background-color: #ffebe9;
+            border-color: var(--danger);
+        }
+
+        /* ログイン画面 */
+        .login-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--primary);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .login-box {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            width: 320px;
+        }
+
+        input[type="password"], input[type="file"] {
+            width: 100%;
+            padding: 8px;
+            margin: 16px 0;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
     </style>
 </head>
 <body>
 
-<div id="login" class="login-screen">
-    <div style="background:white; padding:40px; border-radius:12px; text-align:center;">
-        <h2>Asset Manager Login</h2>
-        <input type="password" id="pass-input" placeholder="Passcode" style="padding:10px; border:1px solid #ddd; width:200px;">
-        <button onclick="checkPass()" class="btn btn-up" style="margin-top:10px;">Login</button>
+<div id="login-screen" class="login-overlay">
+    <div class="login-box">
+        <h2 style="margin:0 0 20px 0;">😎 Authenticate</h2>
+        <input type="password" id="pass-input" placeholder="Enter Passcode">
+        <button onclick="attemptLogin()" class="btn btn-primary" style="width:100%; padding:12px;">Login</button>
     </div>
 </div>
 
-<div class="container" id="main-content">
-    <h1>Asset Manager Pro</h1>
-    <div class="panel">
-        <h3 style="margin-top:0">GitHubへアップロード</h3>
-        <input type="file" id="gh-file">
-        <button class="btn btn-up" onclick="uploadToGithub()" id="up-btn" style="width:auto; padding:10px 30px;">実行</button>
+<header>
+    <div style="font-size: 20px; font-weight: 700;">😎 Asset Manager Pro</div>
+    <button onclick="location.reload()" class="btn" style="width:auto;">Reload</button>
+</header>
+
+<div class="container" id="app-content">
+    <div class="upload-section">
+        <div style="flex-grow:1">
+            <label style="font-size:12px; font-weight:bold;">GitHubへ直接アップロード:</label>
+            <input type="file" id="gh-upload-file" style="margin: 8px 0 0 0;">
+        </div>
+        <button onclick="handleGithubUpload()" id="up-btn" class="btn btn-primary" style="height:40px; margin-top:18px; padding:0 24px;">アップロード実行</button>
     </div>
-    <div id="drive-section">
-        <h3>Google Drive Asset (Temporary)</h3>
-        <div class="grid" id="drive-grid"></div>
-    </div>
+
+    <h3 style="margin: 0 0 16px 0; border-bottom: 2px solid var(--primary); padding-bottom: 8px;">Asset List</h3>
+    <div class="asset-grid" id="main-grid"></div>
 </div>
 
 <script>
-const GAS_URL = "https://script.google.com/macros/s/AKfycbwS7UBlHaklPdrP2uXZk07JEnPaCVsBuVKZTGusAT9Y3JSZGrsx6dfwRu4y_n4gDt_5RQ/exec";
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbwTJOiXCz6az0e-CV4_oJvtNu9Tt4-QpUbHsc2jyWQvQaDovYkno6qpkFoD-lwmp1hvcQ/exec";
+    const GH_USER = "nplus-hub";
+    const GH_REPO = "my-assets";
+    const GH_RAW_BASE = `https://raw.githubusercontent.com/${GH_USER}/${GH_REPO}/main/`;
 
-async function checkPass() {
-    const pass = document.getElementById('pass-input').value;
-    const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ type: "auth", pass: pass }) });
-    const result = await res.json();
-    if (result.success) {
-        document.getElementById('login').style.display = 'none';
-        document.getElementById('main-content').style.display = 'block';
-        loadDriveAssets();
-    } else { alert("不正なパスコードです"); }
-}
+    // ログイン処理
+    async function attemptLogin() {
+        const pass = document.getElementById('pass-input').value;
+        const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ type: "auth", pass: pass }) });
+        const result = await res.json();
+        
+        if (result.success) {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('app-content').style.display = 'block';
+            refreshGallery();
+        } else {
+            alert("Passcode incorrect.");
+        }
+    }
 
-async function loadDriveAssets() {
-    const grid = document.getElementById('drive-grid');
-    grid.innerHTML = "読み込み中...";
-    const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ type: "list_drive" }) });
-    const files = await res.json();
-    
-    grid.innerHTML = "";
-    files.forEach(file => {
+    // 全表示のリフレッシュ（GitHub + Drive）
+    async function refreshGallery() {
+        const grid = document.getElementById('main-grid');
+        grid.innerHTML = "<p>Loading assets...</p>";
+
+        try {
+            // 1. GitHubファイルの取得
+            const ghRes = await fetch(`https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/`);
+            const ghFiles = await ghRes.json();
+            
+            // 2. Driveファイルの取得（GAS経由）
+            const drRes = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ type: "list_drive" }) });
+            const drFiles = await drRes.json();
+
+            grid.innerHTML = "";
+
+            // GitHub資産のカード生成
+            ghFiles.filter(f => f.name.endsWith('.glb')).forEach(file => {
+                const url = GH_RAW_BASE + file.name;
+                createCard(grid, file.name, url, true);
+            });
+
+            // Drive資産のカード生成
+            drFiles.forEach(file => {
+                createCard(grid, file.name, file.id, false);
+            });
+
+        } catch (e) {
+            grid.innerHTML = "<p>Error loading data.</p>";
+        }
+    }
+
+    function createCard(container, name, pathOrId, isGithub) {
         const card = document.createElement('div');
-        card.className = 'card';
+        card.className = 'asset-card';
+        
+        // プレビュー表示（GitHubは表示、Driveはプレビュー不可）
+        const previewHtml = isGithub 
+            ? `<model-viewer src="${pathOrId}" auto-rotate camera-controls shadow-intensity="1"></model-viewer>`
+            : `<div style="text-align:center; color:#888; font-size:12px;">Drive Asset<br>(Preview Unavailable)</div>`;
+
         card.innerHTML = `
-            <div class="preview-box">Driveプレビュー不可</div>
-            <div class="card-info">
-                <strong>${file.name}</strong>
-                <button class="btn btn-danger" onclick="deleteFile('${file.id}')" style="color:red">削除</button>
+            <div class="preview-container">${previewHtml}</div>
+            <div class="asset-info">
+                <div class="asset-name">${name}</div>
+                <div class="button-group">
+                    ${isGithub 
+                        ? `<button class="btn" onclick="copyToClipboard('${pathOrId}')">URLコピー</button>` 
+                        : `<button class="btn btn-danger" onclick="handleDelete('${pathOrId}')">Driveから削除</button>`
+                    }
+                </div>
             </div>
         `;
-        grid.appendChild(card);
-    });
-}
+        container.appendChild(card);
+    }
 
-async function uploadToGithub() {
-    const fileEl = document.getElementById('gh-file');
-    if (fileEl.files.length === 0) return alert("ファイルを選択してください");
-    const file = fileEl.files[0];
-    const btn = document.getElementById('up-btn');
-    btn.innerText = "アップロード中..."; btn.disabled = true;
+    async function handleGithubUpload() {
+        const fileInput = document.getElementById('gh-upload-file');
+        if (fileInput.files.length === 0) return alert("ファイルを選んでください");
+        
+        const file = fileInput.files[0];
+        const btn = document.getElementById('up-btn');
+        btn.innerText = "処理中..."; btn.disabled = true;
 
-    const reader = new FileReader();
-    reader.onload = async () => {
-        const base64 = reader.result.split(',')[1];
-        const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ type: "github_upload", filename: file.name, base64: base64 }) });
+        const reader = new FileReader();
+        reader.onload = async () => {
+            const base64 = reader.result.split(',')[1];
+            const res = await fetch(GAS_URL, { 
+                method: "POST", 
+                body: JSON.stringify({ type: "github_upload", filename: file.name, base64: base64 }) 
+            });
+            const result = await res.json();
+            if (result.content) {
+                alert("GitHubへのアップロードが完了しました");
+                refreshGallery();
+            } else {
+                alert("エラー: " + (result.message || "不明なエラー"));
+            }
+            btn.innerText = "アップロード実行"; btn.disabled = false;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    async function handleDelete(id) {
+        if (!confirm("Google Driveからこのファイルを削除しますか？")) return;
+        const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ type: "delete", id: id }) });
         const result = await res.json();
-        if (result.content) { alert("GitHubへ保存成功！"); location.reload(); }
-        else { alert("失敗: " + result.message); }
-        btn.innerText = "実行"; btn.disabled = false;
-    };
-    reader.readAsDataURL(file);
-}
+        if (result.status === "success") {
+            alert("削除しました");
+            refreshGallery();
+        }
+    }
 
-async function deleteFile(id) {
-    if(!confirm("Driveから削除しますか？")) return;
-    const res = await fetch(GAS_URL, { method: "POST", body: JSON.stringify({ type: "delete", id: id }) });
-    const result = await res.json();
-    if(result.status === "success") { alert("削除しました"); loadDriveAssets(); }
-}
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => alert("URLをコピーしました"));
+    }
 </script>
+
 </body>
 </html>

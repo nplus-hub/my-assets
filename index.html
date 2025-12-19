@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Asset Manager Pro</title>
+    <title>Asset Manager Pro - Fixed</title>
     <script>
         const CONFIG = {
             GAS_URL: "https://script.google.com/macros/s/AKfycbwDAgaCHK96Nrftfs8Bt30dwUE-q3sNyCKhfw540ljFKuF6yyL5HctMFKLQAhAsPLXNjA/exec", 
@@ -16,14 +16,11 @@
         header { background: var(--primary); color: white; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
         .header-btns { display: flex; gap: 12px; }
         .btn-save { background: #2ea44f; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        .btn-save:hover { background: #2c974b; }
         
         .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; max-width: 1400px; margin: 32px auto; padding: 0 20px; }
         .card { background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 1px solid var(--border); height: 400px; display: flex; flex-direction: column; position: relative; }
         
         .preview-box { width: 100%; height: 220px; background: #eaedef; position: relative; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--border); overflow: hidden; }
-        
-        /* プレビューコンテンツ：上に重なり、背景色で下のアイコンを物理的に隠す。装飾的な不透明度制御は廃止。 */
         .preview-content { width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; z-index: 10; background: #eaedef; }
         img.preview-content { object-fit: contain; }
         
@@ -99,9 +96,14 @@
         const pb = card.querySelector('.preview-box');
         
         setTimeout(() => {
+            // GitHubのURLをプレビュー用のRaw形式に変換
+            let previewUrl = url;
+            if (!isDrive && url.includes('github.com')) {
+                previewUrl = url.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/');
+            }
+
             if (!isDrive && isText) {
-                const rawUrl = url.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/');
-                fetch(rawUrl).then(r => r.text()).then(t => {
+                fetch(previewUrl).then(r => r.text()).then(t => {
                     const div = document.createElement('div');
                     div.className = 'text-view';
                     div.textContent = t.substring(0, 800);
@@ -113,16 +115,16 @@
             let el;
             if (is3D) {
                 el = document.createElement('model-viewer');
-                el.src = isDrive ? `https://docs.google.com/uc?export=download&id=${fileId}` : url;
+                el.src = isDrive ? `https://docs.google.com/uc?export=download&id=${fileId}` : previewUrl;
                 el.setAttribute('camera-controls', ''); el.setAttribute('auto-rotate', '');
             } else if (isImage && isDrive) {
-                // Driveの画像プレビューの生命線：実績のあるこのURLを絶対に守る
                 el = document.createElement('iframe');
                 el.src = `https://drive.google.com/file/d/${fileId}/preview`;
             } else if (isImage && !isDrive) {
                 el = document.createElement('img');
-                el.src = url;
+                el.src = previewUrl;
             } else {
+                // その他のファイルはGoogleドキュメントビューアを使用（GitHubの場合）
                 el = document.createElement('iframe');
                 el.src = isDrive ? `https://drive.google.com/file/d/${fileId}/preview` : `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
             }
@@ -133,13 +135,17 @@
     }
 
     window.onload = () => {
+        // GitHub APIからファイル取得
         fetch(`https://api.github.com/repos/${CONFIG.GITHUB.USER}/${CONFIG.GITHUB.REPO}/contents/`)
             .then(res => res.json())
             .then(data => {
                 if (Array.isArray(data)) data.forEach(f => {
+                    // index.htmlは除外、download_urlを使用
                     if (f.type === 'file' && f.name !== 'index.html') createCard(f.name, f.download_url, 'GitHub', '#24292f', false);
                 });
             });
+            
+        // Drive（GAS）からファイル取得
         if (CONFIG.GAS_URL && CONFIG.GAS_URL.startsWith('http')) {
             fetch(`${CONFIG.GAS_URL}?getFiles=true`)
                 .then(r => r.json())

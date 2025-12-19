@@ -3,70 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <title>Asset Manager Pro</title>
-    <link rel="icon" type="image/png" href="https://docs.google.com/uc?export=view&id=1rW2nshO4x8hG7zM92S9Y9N9Y9N9Y9N9">
-    
     <script>
         const CONFIG = {
             GAS_URL: "https://script.google.com/macros/s/AKfycbwDAgaCHK96Nrftfs8Bt30dwUE-q3sNyCKhfw540ljFKuF6yyL5HctMFKLQAhAsPLXNjA/exec",
             GITHUB: { USER: "nplus-hub", REPO: "my-assets" }
         };
     </script>
-
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
     <style>
-        :root { --primary: #24292f; --bg: #f0f2f5; --card: #fff; --border: #e1e4e8; --success: #2da44e; --danger: #cf222e; --info: #0969da; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 0; }
+        :root { --primary: #24292f; --bg: #f0f2f5; --card: #fff; --border: #e1e4e8; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; }
         header { background: var(--primary); color: white; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
         .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; max-width: 1400px; margin: 32px auto; padding: 0 20px; }
         .card { background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 1px solid var(--border); height: 400px; display: flex; flex-direction: column; position: relative; }
         
         /* プレビューエリア：薄い背景色 #eaedef */
-        .preview-box { width: 100%; height: 220px; background: #eaedef; position: relative; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--border); overflow: hidden; }
+        .preview-box { width: 100%; height: 220px; background: #eaedef; position: relative; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--border); }
         
-        /* GitHub文章プレビュー用：自前のdivとして描画 */
-        .text-preview-area { 
+        /* テキスト表示エリア：不透明度100%の背景色でフォールバックを隠す */
+        .text-view { 
             width: 100%; height: 100%; padding: 15px; box-sizing: border-box;
             font-size: 11px; color: #444; white-space: pre-wrap; overflow: hidden;
-            text-align: left; line-height: 1.5; font-family: 'Courier New', monospace;
-            background: transparent; z-index: 10;
+            background: #eaedef; /* ここを不透明にして背後のアイコンを隠す */
+            text-align: left; font-family: monospace; z-index: 15; position: absolute; top: 0; left: 0;
         }
 
-        .preview-content { width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; z-index: 10; }
-        .fallback { text-align: center; z-index: 1; }
-        .fallback-emoji { font-size: 50px; }
-        .fallback-ext { font-size: 11px; font-weight: bold; color: #666; background: #ddd; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; margin-top: 8px; }
-        .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
-        .file-name { font-size: 13px; font-weight: bold; word-break: break-all; color: #333; height: 3em; overflow: hidden; }
+        .preview-content { width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; z-index: 10; background: #eaedef; }
         .badge { position: absolute; top: 10px; right: 10px; padding: 4px 10px; border-radius: 20px; color: white; font-size: 10px; font-weight: bold; z-index: 20; }
-        .btn-group { display: flex; gap: 8px; }
-        .btn { flex: 1; padding: 8px; cursor: pointer; border: 1px solid #d1d5da; background: #fafbfc; border-radius: 6px; font-size: 12px; font-weight: bold; }
+        .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
+        .file-name { font-size: 13px; font-weight: bold; word-break: break-all; height: 3em; overflow: hidden; }
+        .btn { padding: 8px; cursor: pointer; border: 1px solid #d1d5da; background: #fafbfc; border-radius: 6px; font-size: 12px; font-weight: bold; width: 100%; }
+        
+        /* 背後のアイコン用スタイル */
+        .fallback { text-align: center; color: #999; z-index: 1; }
     </style>
 </head>
 <body>
 
 <header>
-    <div style="font-weight:bold; font-size:1.2rem;">Asset Manager Pro</div>
-    <div style="display: flex;">
-        <input type="file" id="up" style="display:none" onchange="uploadFile(this)">
-        <button onclick="document.getElementById('up').click()" style="background:var(--success); color:white; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-weight:bold;">Drive保存</button>
-        <button onclick="location.reload()" style="background:none; color:white; border:1px solid white; padding:8px 16px; border-radius:6px; cursor:pointer; margin-left:10px;">再読込</button>
-    </div>
+    <div style="font-weight:bold;">Asset Manager Pro</div>
+    <button onclick="location.reload()" style="background:none; color:white; border:1px solid white; padding:8px 16px; border-radius:6px; cursor:pointer;">再読込</button>
 </header>
 
 <div id="gallery" class="container"></div>
 
 <script>
-    async function uploadFile(input) {
-        const file = input.files[0]; if (!file) return;
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            const base64 = e.target.result.split(',')[1];
-            await fetch(CONFIG.GAS_URL, { method: "POST", body: JSON.stringify({ type: 'upload', filename: file.name, contentType: file.type, data: base64 }) });
-            location.reload();
-        };
-        reader.readAsDataURL(file);
-    }
-
     function createCard(name, url, source, color, isDrive, fileId) {
         const lower = name.toLowerCase();
         const ext = name.split('.').pop().toUpperCase();
@@ -80,58 +61,40 @@
             <div class="preview-box">
                 <div class="badge" style="background:${color}">${source}</div>
                 <div class="fallback">
-                    <span class="fallback-emoji">${is3D ? '📦' : (isImage ? '🖼️' : '📄')}</span><br>
-                    <span class="fallback-ext">${ext}</span>
+                    <span style="font-size:40px;">📄</span><br><small>${ext}</small>
                 </div>
             </div>
             <div class="card-body">
                 <div class="file-name">${name}</div>
-                <div class="btn-group">
-                    <button class="btn" onclick="navigator.clipboard.writeText('${isDrive ? 'https://docs.google.com/uc?export=view&id='+fileId : url}').then(()=>alert('Copy'))">URLコピー</button>
-                </div>
+                <button class="btn" onclick="navigator.clipboard.writeText('${isDrive ? 'https://docs.google.com/uc?export=view&id='+fileId : url}').then(()=>alert('Copy'))">URLコピー</button>
             </div>`;
         document.getElementById('gallery').appendChild(card);
 
         const pb = card.querySelector('.preview-box');
         setTimeout(() => {
-            if (isDrive) {
-                let el = null;
-                if (is3D) {
-                    el = document.createElement('model-viewer');
-                    el.src = `https://docs.google.com/uc?export=download&id=${fileId}`;
-                    el.setAttribute('camera-controls', ''); el.setAttribute('auto-rotate', '');
-                } else {
-                    el = document.createElement('iframe');
-                    el.src = `https://drive.google.com/file/d/${fileId}/preview`;
-                }
-                if (el) { el.className = 'preview-content'; pb.appendChild(el); }
+            if (!isDrive && isText) {
+                const rawUrl = url.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/');
+                fetch(rawUrl)
+                    .then(r => r.text())
+                    .then(t => {
+                        const div = document.createElement('div');
+                        div.className = 'text-view';
+                        div.textContent = t.substring(0, 800);
+                        pb.appendChild(div);
+                    }).catch(() => {});
             } else {
+                const el = is3D ? document.createElement('model-viewer') : (isImage ? document.createElement('img') : document.createElement('iframe'));
                 if (is3D) {
-                    const el = document.createElement('model-viewer');
-                    el.src = url; el.setAttribute('camera-controls', ''); el.setAttribute('auto-rotate', '');
-                    el.className = 'preview-content'; pb.appendChild(el);
-                } else if (isImage) {
-                    const el = document.createElement('img');
-                    el.src = url; el.style.maxWidth = '100%'; el.style.maxHeight = '100%';
-                    el.className = 'preview-content'; pb.appendChild(el);
-                } else if (isText) {
-                    // GitHubの文章ファイルを直接フェッチ（iframe不使用）
-                    fetch(url)
-                        .then(r => r.ok ? r.text() : Promise.reject())
-                        .then(text => {
-                            const div = document.createElement('div');
-                            div.className = 'text-preview-area';
-                            div.textContent = text.substring(0, 800); // 冒頭を表示
-                            pb.appendChild(div);
-                        })
-                        .catch(() => { /* 失敗時はfallbackアイコンのままにする */ });
+                    el.src = isDrive ? `https://docs.google.com/uc?export=download&id=${fileId}` : url;
+                    el.setAttribute('camera-controls', ''); el.setAttribute('auto-rotate', '');
+                } else if (isImage && !isDrive) {
+                    el.src = url;
+                    el.style.objectFit = 'contain';
                 } else {
-                    // その他（PDF等）は Viewer を使用
-                    const el = document.createElement('iframe');
-                    el.src = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
-                    el.className = 'preview-content';
-                    pb.appendChild(el);
+                    el.src = isDrive ? `https://drive.google.com/file/d/${fileId}/preview` : `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
                 }
+                el.className = 'preview-content';
+                pb.appendChild(el);
             }
         }, 100);
     }
@@ -140,21 +103,14 @@
         fetch(`https://api.github.com/repos/${CONFIG.GITHUB.USER}/${CONFIG.GITHUB.REPO}/contents/`)
             .then(res => res.json())
             .then(data => {
-                if (Array.isArray(data)) {
-                    data.forEach(f => {
-                        if (f.type === 'file' && f.name !== 'index.html') {
-                            createCard(f.name, f.download_url, 'GitHub', '#24292f', false);
-                        }
-                    });
-                }
-            }).catch(e => console.error("GitHub API失敗"));
-
-        if (CONFIG.GAS_URL && CONFIG.GAS_URL.startsWith('https')) {
+                if (Array.isArray(data)) data.forEach(f => {
+                    if (f.type === 'file' && f.name !== 'index.html') createCard(f.name, f.download_url, 'GitHub', '#24292f', false);
+                });
+            });
+        if (CONFIG.GAS_URL.startsWith('http')) {
             fetch(`${CONFIG.GAS_URL}?getFiles=true`)
                 .then(r => r.json())
-                .then(data => { 
-                    if(Array.isArray(data)) data.forEach(f => createCard(f.name, '', 'Drive', '#34a853', true, f.id)); 
-                }).catch(e => console.error("Drive取得失敗"));
+                .then(data => { if(Array.isArray(data)) data.forEach(f => createCard(f.name, '', 'Drive', '#34a853', true, f.id)); });
         }
     };
 </script>

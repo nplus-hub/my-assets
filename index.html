@@ -18,17 +18,26 @@
         .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; max-width: 1400px; margin: 32px auto; padding: 0 20px; }
         .card { background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 1px solid var(--border); height: 420px; display: flex; flex-direction: column; position: relative; }
         
-        /* プレビューエリア：以前成功していた構造を維持 */
+        /* プレビューエリア：親要素 */
         .preview-box { width: 100%; height: 220px; background: #eaedef; position: relative; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--border); overflow: hidden; }
-        .preview-content { width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; z-index: 10; background: white; object-fit: contain; }
         
-        /* テキスト表示専用：薄いグレー背景でアイコンを完全に隠す */
+        /* プレビューコンテンツ共通：背景を塗りつぶして背後を隠す */
+        .preview-content { 
+            width: 100% !important; height: 100% !important; border: none; 
+            position: absolute; top: 0; left: 0; z-index: 10; 
+            background: #eaedef; /* 背景色でアイコンを隠す */
+            object-fit: contain; 
+        }
+        
+        /* 文章プレビュー専用：背景を不透明にして文字を表示 */
         .text-view { 
             width: 100%; height: 100%; padding: 15px; box-sizing: border-box;
-            font-size: 11px; color: #444; white-space: pre-wrap; overflow: hidden;
-            background: #f8f9fa; text-align: left; font-family: monospace; z-index: 15; position: absolute; top: 0; left: 0;
+            font-size: 11px; color: #444; white-space: pre-wrap; overflow-y: auto;
+            background: #f8f9fa; text-align: left; font-family: monospace; 
+            z-index: 15; position: absolute; top: 0; left: 0;
         }
 
+        /* 背後のアイコン：読み込み中のみ見える */
         .fallback-element { text-align: center; color: #999; z-index: 1; position: absolute; }
         .badge { position: absolute; top: 10px; right: 10px; padding: 4px 10px; border-radius: 20px; color: white; font-size: 10px; font-weight: bold; z-index: 20; }
         
@@ -107,7 +116,6 @@
 
         const pb = card.querySelector('.preview-box');
         
-        // 以前成功していた判定と描画ロジックの再現
         if (is3D) {
             const mv = document.createElement('model-viewer');
             mv.className = 'preview-content';
@@ -116,11 +124,10 @@
             mv.setAttribute('auto-rotate', '');
             pb.appendChild(mv);
         } else if (isText && !isDrive) {
-            // fetchでテキストを取得し、専用のdivで表示
             fetch(url).then(r => r.text()).then(t => {
                 const div = document.createElement('div');
                 div.className = 'text-view';
-                div.textContent = t.substring(0, 1000); // プレビュー用に制限
+                div.textContent = t.substring(0, 2000); 
                 pb.appendChild(div);
             }).catch(() => {});
         } else if (isImage && !isDrive) {

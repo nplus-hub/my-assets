@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Asset Manager Pro</title>
-    <link rel="icon" type="image/png" href="https://docs.google.com/uc?export=view&id=1rW2nshO4x8hG7zM92S9Y9N9Y9N9Y9N9">
+    <link rel="icon" type="image/png" href="https://drive.google.com/uc?export=view&id=1rW2nshO4x8hG7zM92S9Y9N9Y9N9Y9N9">
     
     <script>
         const CONFIG = {
@@ -14,7 +14,7 @@
 
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
     <style>
-        :root { --primary: #24292f; --bg: #f0f2f5; --card: #fff; --border: #e1e4e8; --success: #2da44e; }
+        :root { --primary: #24292f; --bg: #f0f2f5; --card: #fff; --border: #e1e4e8; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 0; }
         header { background: var(--primary); color: white; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
         .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; max-width: 1400px; margin: 32px auto; padding: 0 20px; }
@@ -22,8 +22,8 @@
         
         .preview-box { width: 100%; height: 220px; background: #eaedef; position: relative; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--border); overflow: hidden; }
         
-        /* プレビュー要素 */
-        .preview-content { width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; z-index: 10; background: transparent; }
+        /* プレビュー要素：初期状態は透明にして、背後のアイコンを見せる */
+        .preview-content { width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; z-index: 10; opacity: 0; transition: opacity 0.3s; background: transparent; }
         img.preview-content { object-fit: contain; }
         
         /* テキスト表示：背景を塗りつぶしてアイコンを隠す */
@@ -34,7 +34,7 @@
             position: absolute; top: 0; left: 0;
         }
 
-        /* 背後のアイコン：常にそこに存在し、上が透明なら見える */
+        /* 背後のアイコン：常に表示。上が不透明になるか非表示になるまで見える */
         .fallback-element { text-align: center; color: #999; z-index: 1; position: absolute; }
         .badge { position: absolute; top: 10px; right: 10px; padding: 4px 10px; border-radius: 20px; color: white; font-size: 10px; font-weight: bold; z-index: 20; }
         .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
@@ -78,7 +78,7 @@
         const pb = card.querySelector('.preview-box');
         
         setTimeout(() => {
-            // --- GitHubテキスト: 直接描画 ---
+            // GitHub テキスト表示
             if (!isDrive && isText) {
                 const rawUrl = url.replace('github.com', 'raw.githubusercontent.com').replace('/blob/', '/');
                 fetch(rawUrl).then(r => r.text()).then(t => {
@@ -90,7 +90,7 @@
                 return;
             }
 
-            // --- 画像、3D、iframe (Drive含む) ---
+            // 画像、3D、または Drive
             let el = null;
             if (is3D) {
                 el = document.createElement('model-viewer');
@@ -99,6 +99,7 @@
                 el.setAttribute('auto-rotate', '');
             } else if (isImage) {
                 el = document.createElement('img');
+                // Driveの画像もuc?export=view形式で確実に取得
                 el.src = isDrive ? `https://docs.google.com/uc?export=view&id=${fileId}` : url;
             } else {
                 el = document.createElement('iframe');
@@ -107,13 +108,15 @@
 
             if (el) {
                 el.className = 'preview-content';
-                // プレビューが成功して読み込まれたら、アイコンを隠す
-                const hideFallback = () => {
+                const showContent = () => {
+                    el.style.opacity = '1';
+                    // プレビューが不透明（background: #eaedef）を持つiframe/text-viewでない場合、
+                    // アイコンを物理的に隠すことで重なりを確実に解消する
                     const fb = pb.querySelector('.fallback-element');
                     if (fb) fb.style.visibility = 'hidden';
                 };
-                el.onload = hideFallback;
-                el.addEventListener('load', hideFallback);
+                el.onload = showContent;
+                el.addEventListener('load', showContent);
                 pb.appendChild(el);
             }
         }, 100);

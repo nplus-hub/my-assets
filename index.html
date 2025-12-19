@@ -2,54 +2,84 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Asset Manager Pro</title>
-    <link rel="icon" type="image/png" href="https://drive.google.com/uc?export=view&id=1rW2nshO4x8hG7zM92S9Y9N9Y9N9Y9N9">
-    
+    <title>Asset Manager Pro (Restored)</title>
     <script>
         const CONFIG = {
             GAS_URL: "https://script.google.com/macros/s/AKfycbwDAgaCHK96Nrftfs8Bt30dwUE-q3sNyCKhfw540ljFKuF6yyL5HctMFKLQAhAsPLXNjA/exec", 
-            GITHUB: { USER: "nplus-hub", REPO: "my-assets" }
+            GITHUB: { USER: "nplus-hub", REPO: "my-assets", TOKEN: "YOUR_GITHUB_TOKEN" } // TOKENは必要に応じて設定
         };
     </script>
-
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
     <style>
         :root { --primary: #24292f; --bg: #f0f2f5; --card: #fff; --border: #e1e4e8; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 0; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; }
         header { background: var(--primary); color: white; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
+        
+        /* 保存ボタンのスタイル */
+        .header-btns { display: flex; gap: 10px; }
+        .btn-save { background: #2ea44f; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .btn-save:hover { background: #2c974b; }
+
         .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; max-width: 1400px; margin: 32px auto; padding: 0 20px; }
-        .card { background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 1px solid var(--border); height: 400px; display: flex; flex-direction: column; position: relative; }
+        .card { background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 1px solid var(--border); height: 420px; display: flex; flex-direction: column; position: relative; }
         
         .preview-box { width: 100%; height: 220px; background: #eaedef; position: relative; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--border); overflow: hidden; }
-        
-        /* 以前の成功ロジック：プレビューは上に被せるだけの単純構造 */
-        .preview-content { width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; z-index: 10; }
-        img.preview-content { object-fit: contain; background: #eaedef; } 
+        .preview-content { width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; z-index: 10; background: white; }
         
         .text-view { 
             width: 100%; height: 100%; padding: 15px; box-sizing: border-box;
             font-size: 11px; color: #444; white-space: pre-wrap; overflow: hidden;
-            background: #eaedef; text-align: left; font-family: monospace; z-index: 15;
-            position: absolute; top: 0; left: 0;
+            background: #f8f9fa; text-align: left; font-family: monospace; z-index: 15; position: absolute; top: 0; left: 0;
         }
 
-        .fallback-element { text-align: center; color: #999; z-index: 1; position: absolute; }
+        .fallback-element { text-align: center; color: #999; z-index: 1; }
         .badge { position: absolute; top: 10px; right: 10px; padding: 4px 10px; border-radius: 20px; color: white; font-size: 10px; font-weight: bold; z-index: 20; }
         .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
         .file-name { font-size: 13px; font-weight: bold; word-break: break-all; height: 3em; overflow: hidden; }
-        .btn { padding: 8px; cursor: pointer; border: 1px solid #d1d5da; background: #fafbfc; border-radius: 6px; font-size: 12px; font-weight: bold; width: 100%; }
+        .btn { padding: 8px; cursor: pointer; border: 1px solid #d1d5da; background: #fafbfc; border-radius: 6px; font-size: 12px; font-weight: bold; width: 100%; margin-top: 5px; }
     </style>
 </head>
 <body>
 
 <header>
-    <div style="font-weight:bold; font-size:1.2rem;">Asset Manager Pro</div>
-    <button onclick="location.reload()" style="background:none; color:white; border:1px solid white; padding:8px 16px; border-radius:6px; cursor:pointer;">再読込</button>
+    <div style="font-weight:bold;">Asset Manager Pro</div>
+    <div class="header-btns">
+        <button class="btn-save" onclick="saveToGitHub()">GitHubに保存</button>
+        <button onclick="location.reload()" style="background:none; color:white; border:1px solid white; padding:8px 16px; border-radius:6px; cursor:pointer;">再読込</button>
+    </div>
 </header>
 
 <div id="gallery" class="container"></div>
 
 <script>
+    // GitHub保存機能の復元
+    async function saveToGitHub() {
+        const htmlContent = document.documentElement.outerHTML;
+        const fileName = "index.html";
+        const url = `https://api.github.com/repos/${CONFIG.GITHUB.USER}/${CONFIG.GITHUB.REPO}/contents/${fileName}`;
+        
+        try {
+            const res = await fetch(url);
+            const fileData = await res.json();
+            const sha = fileData.sha;
+
+            const updateRes = await fetch(url, {
+                method: "PUT",
+                headers: { "Authorization": `token ${CONFIG.GITHUB.TOKEN}`, "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    message: "Update index.html via Asset Manager",
+                    content: btoa(unescape(encodeURIComponent(htmlContent))),
+                    sha: sha
+                })
+            });
+
+            if (updateRes.ok) alert("GitHubへの保存が完了しました！");
+            else alert("保存に失敗しました。トークンを確認してください。");
+        } catch (e) {
+            alert("エラーが発生しました: " + e.message);
+        }
+    }
+
     function createCard(name, url, source, color, isDrive, fileId) {
         const lower = name.toLowerCase();
         const ext = name.split('.').pop().toUpperCase();
@@ -63,8 +93,7 @@
             <div class="preview-box">
                 <div class="badge" style="background:${color}">${source}</div>
                 <div class="fallback-element">
-                    <span style="font-size:40px;">${is3D ? '📦' : (isImage ? '🖼️' : '📄')}</span><br>
-                    <small>${ext}</small>
+                    <span style="font-size:40px;">${is3D ? '📦' : (isImage ? '🖼️' : '📄')}</span><br><small>${ext}</small>
                 </div>
             </div>
             <div class="card-body">
@@ -87,30 +116,24 @@
                 return;
             }
 
-            let el = null;
+            let el;
             if (is3D) {
                 el = document.createElement('model-viewer');
                 el.src = isDrive ? `https://docs.google.com/uc?export=download&id=${fileId}` : url;
-                el.setAttribute('camera-controls', '');
-                el.setAttribute('auto-rotate', '');
-            } else if (isImage) {
-                el = document.createElement('img');
-                // 確実に表示されていた時のURL形式に完全固定
-                el.src = isDrive ? `https://docs.google.com/uc?export=view&id=${fileId}` : url;
+                el.setAttribute('camera-controls', ''); el.setAttribute('auto-rotate', '');
             } else {
+                // Driveのプレビューを最も確実にするため、iframe方式に統一
                 el = document.createElement('iframe');
                 el.src = isDrive ? `https://drive.google.com/file/d/${fileId}/preview` : `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
             }
-
-            if (el) {
-                el.className = 'preview-content';
-                // 物理的な削除やopacity操作などの「余計な機能」を全削除
-                pb.appendChild(el);
-            }
+            
+            el.className = 'preview-content';
+            pb.appendChild(el);
         }, 100);
     }
 
     window.onload = () => {
+        // GitHubからファイル取得
         fetch(`https://api.github.com/repos/${CONFIG.GITHUB.USER}/${CONFIG.GITHUB.REPO}/contents/`)
             .then(res => res.json())
             .then(data => {
@@ -118,6 +141,7 @@
                     if (f.type === 'file' && f.name !== 'index.html') createCard(f.name, f.download_url, 'GitHub', '#24292f', false);
                 });
             });
+        // Driveからファイル取得 (GAS経由)
         if (CONFIG.GAS_URL && CONFIG.GAS_URL.startsWith('http')) {
             fetch(`${CONFIG.GAS_URL}?getFiles=true`)
                 .then(r => r.json())

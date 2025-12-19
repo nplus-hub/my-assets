@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Asset Manager Pro</title>
-    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/nplus-hub/my-assets/main/face-fuchsia-tongue-out.png">
+    <link rel="icon" type="image/png" href="https://docs.google.com/uc?export=view&id=ここに画像のIDを貼ってください">
     
     <script>
         // --- 設定エリア ---
@@ -128,3 +128,42 @@
                     el = document.createElement('img');
                     el.src = url;
                 } else {
+                    // GitHub文章プレビュー：より安定度の高いrawURL直接指定（pdf/txt等に対応）
+                    el = document.createElement('iframe');
+                    el.src = url;
+                }
+            }
+
+            if (el) {
+                el.className = 'preview-content';
+                el.onerror = () => { el.style.display = 'none'; };
+                pb.appendChild(el);
+            }
+        }, 100);
+    }
+
+    window.onload = () => {
+        const githubApiUrl = `https://api.github.com/repos/${CONFIG.GITHUB.USER}/${CONFIG.GITHUB.REPO}/contents/?t=${new Date().getTime()}`;
+        fetch(githubApiUrl)
+            .then(res => res.ok ? res.json() : Promise.reject('GitHub Load Failed'))
+            .then(data => {
+                if (Array.isArray(data)) {
+                    data.forEach(f => {
+                        if (f.type === 'file' && f.name !== 'index.html') {
+                            createCard(f.name, f.download_url, 'GitHub', '#24292f', false);
+                        }
+                    });
+                }
+            })
+            .catch(err => console.error(err));
+
+        if (CONFIG.GAS_URL && CONFIG.GAS_URL.startsWith('http')) {
+            fetch(`${CONFIG.GAS_URL}?getFiles=true`)
+                .then(r => r.json())
+                .then(data => { if(Array.isArray(data)) data.forEach(f => createCard(f.name, '', 'Drive', '#34a853', true, f.id)); })
+                .catch(e => console.error("Drive Error"));
+        }
+    };
+</script>
+</body>
+</html>

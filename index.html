@@ -22,9 +22,10 @@
         .card { background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 1px solid var(--border); height: 400px; display: flex; flex-direction: column; position: relative; }
         .preview-box { width: 100%; height: 220px; background: #eaedef; position: relative; display: flex; align-items: center; justify-content: center; border-bottom: 1px solid var(--border); overflow: hidden; }
         .preview-content { width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0; z-index: 10; background: white; }
-        .fallback { text-align: center; z-index: 1; }
-        .fallback-emoji { font-size: 40px; display: block; }
-        .fallback-ext { font-size: 10px; font-weight: bold; color: #888; background: #ddd; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; margin-top: 5px; }
+        /* アイコン表示用のスタイル */
+        .fallback { text-align: center; z-index: 1; display: flex; flex-direction: column; align-items: center; }
+        .fallback-emoji { font-size: 50px; line-height: 1; }
+        .fallback-ext { font-size: 11px; font-weight: bold; color: #666; background: #ddd; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; margin-top: 8px; }
         .card-body { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
         .file-name { font-size: 13px; font-weight: bold; word-break: break-all; color: #333; height: 3em; overflow: hidden; }
         .badge { position: absolute; top: 10px; right: 10px; padding: 4px 10px; border-radius: 20px; color: white; font-size: 10px; font-weight: bold; z-index: 20; }
@@ -41,7 +42,6 @@
     <div style="font-weight:bold; font-size:1.2rem;">Asset Manager Pro</div>
     <div style="display: flex; align-items: center;">
         <a id="github-link" target="_blank" style="background:var(--info); color:white; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-weight:bold; text-decoration:none; margin-right:10px; font-size:12px;">GitHub管理画面</a>
-        
         <input type="file" id="up" style="display:none" onchange="uploadFile(this)">
         <button onclick="document.getElementById('up').click()" style="background:var(--success); color:white; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-weight:bold;">Drive保存</button>
         <button onclick="location.reload()" style="background:none; color:white; border:1px solid white; padding:8px 16px; border-radius:6px; cursor:pointer; margin-left:10px;">再読込</button>
@@ -63,8 +63,6 @@
 
 <script>
     let currentId = null, currentEl = null;
-
-    // ヘッダーのGitHubリンク先を自動設定
     document.getElementById('github-link').href = `https://github.com/${CONFIG.GITHUB.USER}/${CONFIG.GITHUB.REPO}`;
 
     async function confirmDelete() {
@@ -89,6 +87,7 @@
         const ext = name.split('.').pop().toUpperCase();
         const is3D = lower.endsWith('.glb');
         const isImage = ['jpg','jpeg','png','gif','webp'].some(e => lower.endsWith(e));
+        const isDoc = ['pdf','txt','doc','docx','pages'].some(e => lower.endsWith(e));
         
         const card = document.createElement('div');
         card.className = 'card';
@@ -112,36 +111,45 @@
         const pb = card.querySelector('.preview-box');
         setTimeout(() => {
             try {
+                let el = null;
                 if (isDrive) {
                     if (is3D) {
-                        const mv = document.createElement('model-viewer');
-                        mv.className = 'preview-content';
-                        mv.src = `https://docs.google.com/uc?export=download&id=${fileId}`;
-                        mv.setAttribute('camera-controls', ''); mv.setAttribute('auto-rotate', '');
-                        mv.setAttribute('crossorigin', 'anonymous');
-                        pb.appendChild(mv);
+                        el = document.createElement('model-viewer');
+                        el.src = `https://docs.google.com/uc?export=download&id=${fileId}`;
+                        el.setAttribute('camera-controls', ''); el.setAttribute('auto-rotate', '');
+                        el.setAttribute('crossorigin', 'anonymous');
                     } else {
-                        const ifr = document.createElement('iframe');
-                        ifr.className = 'preview-content';
-                        ifr.src = `https://drive.google.com/file/d/${fileId}/preview`;
-                        pb.appendChild(ifr);
+                        el = document.createElement('iframe');
+                        el.src = `https://drive.google.com/file/d/${fileId}/preview`;
                     }
-                } else if (is3D || isImage) {
-                    const el = is3D ? document.createElement('model-viewer') : document.createElement('img');
+                } else {
+                    // GitHub側のプレビュー判定
+                    if (is3D) {
+                        el = document.createElement('model-viewer');
+                        el.src = url;
+                        el.setAttribute('camera-controls', ''); el.setAttribute('auto-rotate', '');
+                    } else if (isImage) {
+                        el = document.createElement('img');
+                        el.src = url;
+                    } else if (isDoc) {
+                        // GitHubの文章ファイルをGoogle Driveのビューアー等でプレビュー（以前の機能の復元）
+                        el = document.createElement('iframe');
+                        el.src = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
+                    }
+                }
+
+                if (el) {
                     el.className = 'preview-content';
-                    el.src = url;
-                    if(is3D) { el.setAttribute('camera-controls', ''); el.setAttribute('auto-rotate', ''); }
+                    // 読み込みエラー時に要素を消してアイコンを見せる
+                    el.onerror = () => el.remove();
                     pb.appendChild(el);
                 }
-            } catch (err) {
-                console.error("Preview load error", err);
-            }
+            } catch (err) { console.error(err); }
         }, 100);
     }
 
     window.onload = () => {
         const githubApiUrl = `https://api.github.com/repos/${CONFIG.GITHUB.USER}/${CONFIG.GITHUB.REPO}/contents/?t=${new Date().getTime()}`;
-        
         fetch(githubApiUrl)
             .then(res => res.ok ? res.json() : Promise.reject('GitHub Load Failed'))
             .then(data => {
